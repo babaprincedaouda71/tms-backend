@@ -73,4 +73,6 @@ public interface TrainingInvitationRepository extends JpaRepository<TrainingInvi
                                                       @Param("status") InvitationStatusEnum status,
                                                       @Param("userId") Long userId,
                                                       Pageable pageable);
+
+    List<TrainingInvitation> findByUserId(Long userId);
 }

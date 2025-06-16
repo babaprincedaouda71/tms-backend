@@ -436,6 +436,7 @@ public class TrainingServiceImpl implements TrainingService {
         try {
             CancelTrainingEmailRequest emailRequest = CancelTrainingEmailRequest.builder()
                     .emails(emails)
+                    .object(cancelTrainingDto.getObject())
                     .message(cancelTrainingDto.getContent())
                     .build();
 

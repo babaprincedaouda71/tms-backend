@@ -1,5 +1,8 @@
 package org.example.trainingservice.enums;
 
+import lombok.Getter;
+
+@Getter
 public enum InvitationStatusEnum {
     NOT_SENT("Non envoyée"),
     PENDING("En attente"),
@@ -14,7 +17,4 @@ public enum InvitationStatusEnum {
         this.description = description;
     }
 
-    public String getDescription() {
-        return description;
-    }
 }

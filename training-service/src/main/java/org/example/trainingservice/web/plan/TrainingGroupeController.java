@@ -69,4 +69,9 @@ public class TrainingGroupeController {
     public ResponseEntity<?> sendInvitations(@PathVariable Long groupId, @RequestBody SendInvitationDto sendInvitationDto) {
         return trainingGroupeService.sendInvitations(groupId, sendInvitationDto);
     }
+
+    @GetMapping("/get/getParticipants/{groupId}")
+    public ResponseEntity<?> getParticipantsForTrainingInvitation(@PathVariable Long groupId) {
+        return trainingGroupeService.getParticipantsForTrainingInvitation(groupId);
+    }
 }

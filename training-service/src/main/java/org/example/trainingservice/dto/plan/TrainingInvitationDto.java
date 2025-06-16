@@ -12,11 +12,15 @@ import java.util.UUID;
 public class TrainingInvitationDto {
     private UUID id;
 
+    private Long userId;
+
     private String userFullName;
 
     private String userEmail;
 
     private LocalDate invitationDate;
 
-    private InvitationStatusEnum status;
+    private  String theme;
+
+    private String status;
 }

@@ -98,126 +98,99 @@ public class TrainingInvitationServiceImpl implements TrainingInvitationService 
                 training = groupe.getTraining();
             }
 
-            // 4. Récupération des informations des participants depuis auth-service
-            List<ParticipantForCancel> participants;
-            try {
-                participants = authServiceClient.getParticipantsEmail(sendInvitationDto.getParticipantIds());
-                log.info("Récupéré {} participants depuis auth-service", participants.size());
-            } catch (Exception e) {
-                log.error("Erreur lors de la récupération des participants depuis auth-service", e);
-                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                        .body("Impossible de récupérer les informations des participants");
-            }
+            // 4. Récupération des invitations avec statut NOT_SENT pour les participants spécifiés
+            List<TrainingInvitation> notSentInvitations = new ArrayList<>();
+            List<TrainingInvitation> alreadySentInvitations = new ArrayList<>();
 
-            // 5. Filtrage des participants qui n'ont pas déjà d'invitation
-            List<ParticipantForCancel> participantsToInvite = new ArrayList<>();
-            List<TrainingInvitation> newInvitations = new ArrayList<>();
+            for (Long participantId : sendInvitationDto.getParticipantIds()) {
+                TrainingInvitation invitation = trainingInvitationRepository
+                        .findByTrainingGroupeIdAndUserId(groupId, participantId);
 
-            for (ParticipantForCancel participant : participants) {
-                // Vérifier si une invitation existe déjà
-                Optional<TrainingInvitation> existingInvitation =
-                        trainingInvitationRepository.findByUserIdAndTrainingGroupeId(participant.getId(), groupId);
-
-                if (existingInvitation.isEmpty()) {
-                    participantsToInvite.add(participant);
-
-                    // Créer l'invitation en base de données
-                    TrainingInvitation invitation = TrainingInvitation.builder()
-                            .trainingGroupe(groupe)
-                            .userId(participant.getId())
-                            .companyId(groupe.getCompanyId())
-                            .userEmail(participant.getEmail())
-                            .userFullName(participant.getName())
-                            .status(InvitationStatusEnum.PENDING)
-                            .invitationDate(LocalDate.now())
-                            .notes("Invitation envoyée via l'interface admin")
-                            .build();
-
-                    newInvitations.add(invitation);
+                if (invitation != null) {
+                    if (invitation.getStatus() == InvitationStatusEnum.NOT_SENT) {
+                        notSentInvitations.add(invitation);
+                    } else {
+                        alreadySentInvitations.add(invitation);
+                        log.info("Invitation déjà envoyée pour l'utilisateur {} avec le statut {}",
+                                participantId, invitation.getStatus());
+                    }
                 } else {
-                    log.warn("Invitation déjà existante pour l'utilisateur {} et le groupe {}",
-                            participant.getId(), groupId);
+                    log.warn("Aucune invitation trouvée pour l'utilisateur {} dans le groupe {}",
+                            participantId, groupId);
                 }
             }
 
-            if (participantsToInvite.isEmpty()) {
+            if (notSentInvitations.isEmpty()) {
                 return ResponseEntity.badRequest()
-                        .body("Tous les participants sélectionnés ont déjà reçu une invitation");
+                        .body("Aucune invitation avec le statut NOT_SENT trouvée pour les participants sélectionnés");
             }
 
-            // 6. Sauvegarde des invitations en base de données
-            try {
-                trainingInvitationRepository.saveAll(newInvitations);
-                log.info("Sauvegardé {} nouvelles invitations en base", newInvitations.size());
-            } catch (Exception e) {
-                log.error("Erreur lors de la sauvegarde des invitations", e);
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body("Erreur lors de la sauvegarde des invitations");
-            }
-
-            // 7. Préparation des détails de la formation pour l'email
-//            TrainingGroupeDetails trainingDetails = TrainingGroupeDetails.builder()
-//                    .groupeId(groupe.getId())
-//                    .trainingName(training.getTheme())
-//                    .startDate(groupe.getStartDate())
-//                    .endDate(groupe.getEndDate())
-//                    .location(groupe.getLocation())
-//                    .city(groupe.getCity())
-//                    .dates(groupe.getDates())
-//                    .morningStartTime(groupe.getMorningStartTime())
-//                    .morningEndTime(groupe.getMorningEndTime())
-//                    .afternoonStartTime(groupe.getAfternoonStartTime())
-//                    .afternoonEndTime(groupe.getAfternoonEndTime())
-//                    .build();
-
-            // 8. Extraction des emails pour l'envoi
-            Set<String> emails = participantsToInvite.stream()
-                    .map(ParticipantForCancel::getEmail)
+            // 5. Extraction des emails pour l'envoi
+            Set<String> emails = notSentInvitations.stream()
+                    .map(TrainingInvitation::getUserEmail)
                     .filter(Objects::nonNull)
+                    .filter(email -> !email.trim().isEmpty())
                     .collect(Collectors.toSet());
 
             if (emails.isEmpty()) {
                 return ResponseEntity.badRequest()
-                        .body("Aucun email valide trouvé pour les participants");
+                        .body("Aucun email valide trouvé pour les participants avec le statut NOT_SENT");
             }
 
-            // 9. Préparation de la requête pour le service de notification
+            // 6. Préparation de la requête pour le service de notification
             SendInvitationEmailRequest emailRequest = SendInvitationEmailRequest.builder()
                     .emails(emails)
+                    .object(sendInvitationDto.getObject())
                     .message(sendInvitationDto.getContent())
                     .build();
 
-            // 10. Envoi des emails via le service de notification
+            // 7. Envoi des emails via le service de notification
             try {
                 notificationServiceClient.sendInvitationEmails(emailRequest);
-                log.info("Emails d'invitation envoyés avec succès pour {} participants", participantsToInvite.size());
+                log.info("Emails d'invitation envoyés avec succès pour {} participants", notSentInvitations.size());
             } catch (Exception e) {
                 log.error("Erreur lors de l'envoi des emails d'invitation", e);
-
-                // En cas d'échec d'envoi d'email, marquer les invitations comme échouées
-                // (optionnel : vous pourriez vouloir ajouter un statut FAILED)
-                log.warn("Les invitations ont été sauvegardées en base mais l'envoi d'email a échoué");
-
-                return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
-                        .body("Invitations créées en base mais erreur lors de l'envoi des emails");
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                        .body("Erreur lors de l'envoi des emails d'invitation: " + e.getMessage());
             }
 
-            // 10. Mise à jour du statut du groupe si nécessaire
-            // Vous pourriez vouloir marquer que des invitations ont été envoyées
-            updateGroupeAfterInvitations(groupe, newInvitations.size());
+            // 8. Mise à jour du statut des invitations de NOT_SENT vers PENDING
+            try {
+                for (TrainingInvitation invitation : notSentInvitations) {
+                    invitation.setStatus(InvitationStatusEnum.PENDING);
+                    invitation.setInvitationDate(LocalDate.now());
+                    invitation.setNotes("Invitation envoyée via l'interface admin le " + LocalDate.now());
+                }
 
-            // 11. Réponse de succès
+                trainingInvitationRepository.saveAll(notSentInvitations);
+                log.info("Statut mis à jour pour {} invitations: NOT_SENT → PENDING", notSentInvitations.size());
+
+            } catch (Exception e) {
+                log.error("Erreur lors de la mise à jour du statut des invitations", e);
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body("Emails envoyés mais erreur lors de la mise à jour du statut des invitations");
+            }
+
+            // 9. Mise à jour du statut du groupe si nécessaire
+            updateGroupeAfterInvitations(groupe, notSentInvitations.size());
+
+            // 10. Réponse de succès avec un résumé détaillé
             InvitationSummaryDto summary = InvitationSummaryDto.builder()
                     .totalParticipants(sendInvitationDto.getParticipantIds().size())
-                    .newInvitations(newInvitations.size())
-                    .existingInvitations(participants.size() - participantsToInvite.size())
-                    .emailsSent(participantsToInvite.size())
-                    .smsSent(Boolean.TRUE.equals(sendInvitationDto.getSendSms()) ? participantsToInvite.size() : 0)
+                    .newInvitations(notSentInvitations.size())
+                    .existingInvitations(alreadySentInvitations.size())
+                    .emailsSent(notSentInvitations.size())
+                    .smsSent(Boolean.TRUE.equals(sendInvitationDto.getSendSms()) ? notSentInvitations.size() : 0)
                     .build();
 
             log.info("Envoi des invitations terminé avec succès: {}", summary);
 
-            return ResponseEntity.ok(summary);
+            return ResponseEntity.ok(Map.of(
+                    "summary", summary,
+                    "message", String.format("Invitations envoyées avec succès à %d participants. " +
+                                    "%d invitations étaient déjà envoyées.",
+                            notSentInvitations.size(), alreadySentInvitations.size())
+            ));
 
         } catch (Exception e) {
             log.error("Erreur inattendue lors de l'envoi des invitations", e);
@@ -230,6 +203,15 @@ public class TrainingInvitationServiceImpl implements TrainingInvitationService 
     public void createTrainingInvitation(TrainingGroupe trainingGroupe, Set<Long> userGroupIds) {
         Long companyId = SecurityUtils.getCurrentCompanyId();
         Long groupId = trainingGroupe.getId();
+        List<String> dates = trainingGroupe.getDates();
+        String city = trainingGroupe.getCity();
+        String location = trainingGroupe.getLocation();
+        String trainerName = trainingGroupe.getTrainerName();
+        String name = trainingGroupe.getName();
+        Training training = trainingGroupe.getTraining();
+        String theme = training.getTheme();
+        UUID id = training.getId();
+        Integer participantCount = trainingGroupe.getParticipantCount();
 
         List<TrainingInvitation> trainingInvitations = new ArrayList<>();
 
@@ -251,12 +233,35 @@ public class TrainingInvitationServiceImpl implements TrainingInvitationService 
                         .companyId(companyId)
                         .status(InvitationStatusEnum.NOT_SENT)
                         .invitationDate(null)
+                        .trainingId(id)
+                        .trainingTheme(theme)
+                        .groupeName(name)
+                        .trainerName(trainerName)
+                        .participantCount(participantCount)
+                        .dates(dates)
+                        .location(location)
+                        .city(city)
                         .build();
                 trainingInvitations.add(invitation);
             }
         }
         // Enregistrement des invitations
         trainingInvitationRepository.saveAll(trainingInvitations);
+    }
+
+    @Override
+    public ResponseEntity<?> getUserInvitations(Long userId) {
+        log.info("Getting user invitations for user: {}", userId);
+        try {
+            List<TrainingInvitation> userInvitations = trainingInvitationRepository.findByUserId(userId);
+            if (userInvitations.isEmpty()) {
+                return ResponseEntity.ok(Collections.emptyList());
+            }
+
+            return ResponseEntity.ok(TrainingInvitationUtilMethods.mapToUserInvitationDtos(userInvitations));
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     /**

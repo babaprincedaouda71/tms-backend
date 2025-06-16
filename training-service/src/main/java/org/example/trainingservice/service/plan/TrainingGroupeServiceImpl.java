@@ -2,10 +2,12 @@ package org.example.trainingservice.service.plan;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.example.trainingservice.client.users.AuthServiceClient;
 import org.example.trainingservice.dto.group.*;
 import org.example.trainingservice.dto.need.DepartmentDto;
 import org.example.trainingservice.dto.need.SiteDto;
 import org.example.trainingservice.dto.ocf.OCFAddOrEditGroupDto;
+import org.example.trainingservice.dto.plan.ParticipantForCancel;
 import org.example.trainingservice.dto.plan.SendInvitationDto;
 import org.example.trainingservice.entity.OCF;
 import org.example.trainingservice.entity.TrainerForTrainingGroupe;
@@ -28,10 +30,7 @@ import org.example.trainingservice.utils.TrainingGroupeUtilMethods;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -46,6 +45,7 @@ public class TrainingGroupeServiceImpl implements TrainingGroupeService {
     private final GroupeCompletionService groupeCompletionService;
     private final CompletionUtilMethods completionUtilMethods;
     private final TrainingInvitationService trainingInvitationService;
+    private final AuthServiceClient authServiceClient;
 
     public TrainingGroupeServiceImpl(
             TrainingGroupeRepository trainingGroupeRepository,
@@ -56,8 +56,8 @@ public class TrainingGroupeServiceImpl implements TrainingGroupeService {
             TrainingCompletionService trainingCompletionService,
             GroupeCompletionService groupeCompletionService,
             CompletionUtilMethods completionUtilMethods,
-            TrainingInvitationService trainingInvitationService
-    ) {
+            TrainingInvitationService trainingInvitationService,
+            AuthServiceClient authServiceClient) {
         this.trainingGroupeRepository = trainingGroupeRepository;
         this.trainingRepository = trainingRepository;
         this.ocfRepository = ocfRepository;
@@ -67,6 +67,7 @@ public class TrainingGroupeServiceImpl implements TrainingGroupeService {
         this.groupeCompletionService = groupeCompletionService;
         this.completionUtilMethods = completionUtilMethods;
         this.trainingInvitationService = trainingInvitationService;
+        this.authServiceClient = authServiceClient;
     }
 
     @Override
@@ -220,6 +221,7 @@ public class TrainingGroupeServiceImpl implements TrainingGroupeService {
         trainingGroupe.setEmployeeCount(addOrEditGroupParticipantsDto.getEmployeeCount());
         trainingGroupe.setWorkerCount(addOrEditGroupParticipantsDto.getWorkerCount());
         trainingGroupe.setTemporaryWorkerCount(addOrEditGroupParticipantsDto.getTemporaryWorkerCount());
+        log.error("Participant ids: {}", addOrEditGroupParticipantsDto.getUserGroupIds());
         trainingGroupe.setUserGroupIds(addOrEditGroupParticipantsDto.getUserGroupIds());
         trainingGroupe.setParticipantCount(TrainingGroupeUtilMethods.calculateTotalParticipants(addOrEditGroupParticipantsDto));
 
@@ -467,6 +469,33 @@ public class TrainingGroupeServiceImpl implements TrainingGroupeService {
         } catch (Exception e) {
         }
         return null;
+    }
+
+    @Override
+    public ResponseEntity<?> getParticipantsForTrainingInvitation(Long groupId) {
+        log.info("getParticipantsForTrainingInvitation");
+        try {
+            // Récupérer le groupe
+            TrainingGroupe trainingGroupe = trainingGroupeRepository.findById(groupId).orElseThrow(() -> new TrainingGroupeNotFoundException("Training Groupe not found with ID : " + groupId, null));
+
+            // Collecte des participants ids
+            Set<Long> participantIds = trainingGroupe.getUserGroupIds();
+
+            // Vérification pour s'assurer que ce n'est pas vide
+            if (participantIds.isEmpty()) {
+                log.info("No participants founds");
+                return ResponseEntity.ok(Collections.emptyList());
+            }
+
+            // Récupération des infos des users
+            List<ParticipantForCancel> allParticipants = new ArrayList<>();
+
+            allParticipants = authServiceClient.getParticipantsEmail(participantIds);
+
+            return ResponseEntity.ok(allParticipants);
+        } catch (Exception ignored) {
+        }
+        return ResponseEntity.ok(Collections.emptyList());
     }
 
     /**

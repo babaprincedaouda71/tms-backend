@@ -10,5 +10,7 @@ import java.util.Set;
 public class SendInvitationEmailRequest {
     private Set<String> emails;
 
+    private String object;
+
     private String message;
 }

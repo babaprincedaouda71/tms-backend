@@ -64,7 +64,7 @@ public class EmailServiceImpl implements EmailService {
             int endIndex = Math.min(i + batchSize, emailList.size());
             List<String> batch = emailList.subList(i, endIndex);
 
-            processBatch(batch, request.getMessage());
+            processBatch(batch, request.getObject(), request.getMessage());
 
             // Pause entre les batches pour éviter la surcharge
             if (endIndex < emailList.size()) {
@@ -92,7 +92,7 @@ public class EmailServiceImpl implements EmailService {
             int endIndex = Math.min(i + batchSize, emailList.size());
             List<String> batch = emailList.subList(i, endIndex);
 
-            processBatch(batch, request.getMessage());
+            processBatch(batch, request.getObject(), request.getMessage());
 
             // Pause entre les batches pour éviter la surcharge
             if (endIndex < emailList.size()) {
@@ -106,17 +106,17 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
-    private void processBatch(List<String> emails, String messageContent) {
+    private void processBatch(List<String> emails, String object, String messageContent) {
         for (String email : emails) {
             try {
-                sendSingleEmail(email, messageContent);
+                sendSingleEmail(email, object, messageContent);
             } catch (Exception e) {
                 // Continuer avec les autres emails même si un envoi échoue
             }
         }
     }
 
-    private void sendSingleEmail(String recipientEmail, String messageContent) {
+    private void sendSingleEmail(String recipientEmail, String object, String messageContent) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -124,10 +124,10 @@ public class EmailServiceImpl implements EmailService {
             // Configuration de l'email
 //            helper.setFrom("noreply@votre-domaine.com"); // À configurer
             helper.setTo(recipientEmail);
-            helper.setSubject("Annulation de formation - Information importante");
+            helper.setSubject(object);
 
             // Corps du message avec contenu HTML de base
-            String htmlContent = buildEmailContent(messageContent);
+            String htmlContent = buildEmailContent(object, messageContent);
             helper.setText(htmlContent, true);
 
             // Envoi de l'email
@@ -138,12 +138,7 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
-    private String buildEmailContent(String messageContent) {
-        // Le message est déjà formaté côté frontend, on l'utilise directement
-        if (messageContent == null || messageContent.trim().isEmpty()) {
-            messageContent = "Votre formation a été annulée.";
-        }
-
+    private String buildEmailContent(String subject, String messageContent) {
         // Conversion du message en HTML (remplacer les sauts de ligne par des <br>)
         String htmlMessage = messageContent
                 .replace("\n", "<br>")
@@ -164,7 +159,7 @@ public class EmailServiceImpl implements EmailService {
                 <body>
                     <div class="container">
                         <div class="header">
-                            <h2 style="margin: 0; color: #dc3545;">Annulation de formation</h2>
+                            <h2 style="margin: 0; color: #dc3545;">%s</h2>
                         </div>
                         <div class="content">
                             %s
@@ -172,11 +167,11 @@ public class EmailServiceImpl implements EmailService {
                     </div>
                 </body>
                 </html>
-                """.formatted(htmlMessage);
+                """.formatted(subject, htmlMessage);
     }
 
     // Exception personnalisée
-    public class EmailSendingException extends RuntimeException {
+    public static class EmailSendingException extends RuntimeException {
         public EmailSendingException(String message, Throwable cause) {
             super(message, cause);
         }

@@ -23,4 +23,9 @@ public class TrainingInvitationController {
     public ResponseEntity<?> sendInvitations(@PathVariable Long groupId, @RequestBody SendInvitationDto sendInvitationDto) {
         return trainingInvitationService.sendInvitations(groupId, sendInvitationDto);
     }
+
+    @GetMapping("/get/userInvitations/{userId}")
+    public ResponseEntity<?> getUserInvitations(@PathVariable Long userId) {
+        return trainingInvitationService.getUserInvitations(userId);
+    }
 }

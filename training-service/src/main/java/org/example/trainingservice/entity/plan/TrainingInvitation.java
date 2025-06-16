@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import org.example.trainingservice.enums.InvitationStatusEnum;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -55,6 +56,30 @@ public class TrainingInvitation {
 
     @Column(name = "rejection_reason")
     private String rejectionReason;
+
+    @Column(name = "thème de la formation")
+    private String trainingTheme;
+
+    @Column(name = "Identifiant de la formation")
+    private UUID trainingId;
+
+    @Column(name = "Nom du groupe")
+    private String groupeName;
+
+    @Column(name = "Nom du formateur")
+    private String trainerName;
+
+    @Column(name = "Nombre de participants")
+    private Integer participantCount;
+
+    @Column(name = "Lieu")
+    private String location;
+
+    @Column(name = "Ville")
+    private String city;
+
+    @Column(name = "Dates de formations")
+    private List<String> dates;
 
     @Column(name = "notes")
     private String notes;

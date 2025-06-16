@@ -32,4 +32,6 @@ public interface TrainingGroupeService {
     ResponseEntity<?> getGroupCompletionStatus(Long groupId);
 
     ResponseEntity<?> sendInvitations(Long groupId, SendInvitationDto sendInvitationDto);
+
+    ResponseEntity<?> getParticipantsForTrainingInvitation(Long groupId);
 }
