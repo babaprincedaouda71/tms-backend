@@ -42,19 +42,22 @@ public class PlanServiceImpl implements PlanService {
     private final TrainingRepository trainingRepository;
     private final TrainerForTrainingGroupeRepository trainerForTrainingGroupeRepository;
     private final TrainerRepository trainerRepository;
+    private final TrainingInvitationService trainingInvitationService;
+
 
     public PlanServiceImpl(
             PlanRepository planRepository,
             NeedRepository needRepository,
             TrainingRepository trainingRepository,
             TrainerForTrainingGroupeRepository trainerForTrainingGroupeRepository,
-            TrainerRepository trainerRepository
+            TrainerRepository trainerRepository, TrainingInvitationService trainingInvitationService
     ) {
         this.planRepository = planRepository;
         this.needRepository = needRepository;
         this.trainingRepository = trainingRepository;
         this.trainerForTrainingGroupeRepository = trainerForTrainingGroupeRepository;
         this.trainerRepository = trainerRepository;
+        this.trainingInvitationService = trainingInvitationService;
     }
 
     /**
@@ -192,6 +195,7 @@ public class PlanServiceImpl implements PlanService {
     }
 
     @Override
+    @Transactional
     public ResponseEntity<?> addThemeToPlan(AddThemeToPlanDto addThemeToPlanDto) {
         log.info("Transforming needs to training and adding to plan");
 
@@ -255,7 +259,10 @@ public class PlanServiceImpl implements PlanService {
                     .collect(Collectors.toList());
 
             // Sauvegarder les trainings (ils seront automatiquement associés au plan)
-            trainingRepository.saveAll(trainings);
+            List<Training> savedTrainings = trainingRepository.saveAll(trainings);
+
+            // NOUVEAU : Création des invitations pour tous les groupes de formation
+            createInvitationsForTrainings(savedTrainings);
 
             // Supprimer les needs
             needRepository.deleteAll(needsToAdd);
@@ -372,6 +379,48 @@ public class PlanServiceImpl implements PlanService {
                 .name(trainer.getName())
                 .email(trainer.getEmail())
                 .build();
+    }
+
+    private void createInvitationsForTrainings(List<Training> trainings) {
+        log.info("Creating invitations for {} trainings", trainings.size());
+
+        int totalInvitationsCreated = 0;
+
+        for (Training training : trainings) {
+            for (TrainingGroupe groupe : training.getGroupes()) {
+                try {
+                    // Vérifier si le groupe a des participants définis
+                    if (groupe.getUserGroupIds() != null && !groupe.getUserGroupIds().isEmpty()) {
+                        log.debug("Creating invitations for training group: {} with {} user groups",
+                                groupe.getName(), groupe.getUserGroupIds().size());
+
+                        // Appel du service d'invitation existant
+                        trainingInvitationService.createTrainingInvitation(groupe, groupe.getUserGroupIds());
+                        totalInvitationsCreated++;
+
+                        log.debug("Invitations created successfully for training group: {}", groupe.getName());
+                    } else {
+                        log.debug("No user groups defined for training group: {}, skipping invitation creation",
+                                groupe.getName());
+                    }
+                } catch (Exception e) {
+                    log.error("Error creating invitations for training group {} (Training: {}): {}",
+                            groupe.getName(), training.getTheme(), e.getMessage(), e);
+                    // Continue avec les autres groupes même en cas d'erreur
+                }
+            }
+        }
+
+        log.info("Invitations creation completed. {} training groups processed", totalInvitationsCreated);
+    }
+
+    // 4. MÉTHODE UTILITAIRE : Validation des groupes pour les invitations
+    private boolean isGroupReadyForInvitations(TrainingGroupe groupe) {
+        return groupe.getUserGroupIds() != null &&
+                !groupe.getUserGroupIds().isEmpty() &&
+                groupe.getName() != null &&
+                groupe.getTraining() != null &&
+                groupe.getTraining().getTheme() != null;
     }
 
     @Override

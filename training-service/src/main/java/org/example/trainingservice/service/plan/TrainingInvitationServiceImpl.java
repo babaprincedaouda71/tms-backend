@@ -5,6 +5,7 @@ import org.example.trainingservice.client.notification.NotificationServiceClient
 import org.example.trainingservice.client.users.AuthServiceClient;
 import org.example.trainingservice.dto.plan.InvitationSummaryDto;
 import org.example.trainingservice.dto.plan.ParticipantForCancel;
+import org.example.trainingservice.dto.plan.RespondInvitationDto;
 import org.example.trainingservice.dto.plan.SendInvitationDto;
 import org.example.trainingservice.entity.plan.Training;
 import org.example.trainingservice.entity.plan.TrainingGroupe;
@@ -200,53 +201,87 @@ public class TrainingInvitationServiceImpl implements TrainingInvitationService 
     }
 
     @Override
+    @Transactional // Assurer la cohérence transactionnelle
     public void createTrainingInvitation(TrainingGroupe trainingGroupe, Set<Long> userGroupIds) {
-        Long companyId = SecurityUtils.getCurrentCompanyId();
-        Long groupId = trainingGroupe.getId();
-        List<String> dates = trainingGroupe.getDates();
-        String city = trainingGroupe.getCity();
-        String location = trainingGroupe.getLocation();
-        String trainerName = trainingGroupe.getTrainerName();
-        String name = trainingGroupe.getName();
-        Training training = trainingGroupe.getTraining();
-        String theme = training.getTheme();
-        UUID id = training.getId();
-        Integer participantCount = trainingGroupe.getParticipantCount();
-
-        List<TrainingInvitation> trainingInvitations = new ArrayList<>();
-
-        // Récupération des participants
-        List<ParticipantForCancel> participants = List.of();
         try {
-            participants = authServiceClient.getParticipantsEmail(userGroupIds);
-        } catch (Exception e) {
-            log.error("Erreur lors de la sauvegarde des invitations", e);
-        }
-        for (ParticipantForCancel participant : participants) {
-            TrainingInvitation retrievedInvitation = trainingInvitationRepository.findByTrainingGroupeIdAndUserId(groupId, participant.getId());
-            if (retrievedInvitation == null) {
-                TrainingInvitation invitation = TrainingInvitation.builder()
-                        .trainingGroupe(trainingGroupe)
-                        .userId(participant.getId())
-                        .userEmail(participant.getEmail())
-                        .userFullName(participant.getName())
-                        .companyId(companyId)
-                        .status(InvitationStatusEnum.NOT_SENT)
-                        .invitationDate(null)
-                        .trainingId(id)
-                        .trainingTheme(theme)
-                        .groupeName(name)
-                        .trainerName(trainerName)
-                        .participantCount(participantCount)
-                        .dates(dates)
-                        .location(location)
-                        .city(city)
-                        .build();
-                trainingInvitations.add(invitation);
+            log.debug("Creating training invitations for group {} with {} user groups",
+                    trainingGroupe.getName(), userGroupIds.size());
+
+            Long companyId = SecurityUtils.getCurrentCompanyId();
+            Long groupId = trainingGroupe.getId();
+            List<String> dates = trainingGroupe.getDates();
+            String city = trainingGroupe.getCity();
+            String location = trainingGroupe.getLocation();
+            String trainerName = trainingGroupe.getTrainerName();
+            String name = trainingGroupe.getName();
+            Training training = trainingGroupe.getTraining();
+            String theme = training.getTheme();
+            UUID id = training.getId();
+            Integer participantCount = trainingGroupe.getParticipantCount();
+
+            List<TrainingInvitation> trainingInvitations = new ArrayList<>();
+
+            // Récupération des participants avec gestion d'erreur améliorée
+            List<ParticipantForCancel> participants = List.of();
+            try {
+                participants = authServiceClient.getParticipantsEmail(userGroupIds);
+                log.debug("Retrieved {} participants from auth service", participants.size());
+            } catch (Exception e) {
+                log.error("Erreur lors de la récupération des participants pour le groupe {}: {}",
+                        groupId, e.getMessage());
+                throw new RuntimeException("Impossible de récupérer les participants", e);
             }
+
+            // Création des invitations
+            int newInvitationsCount = 0;
+            int existingInvitationsCount = 0;
+
+            for (ParticipantForCancel participant : participants) {
+                TrainingInvitation retrievedInvitation = trainingInvitationRepository
+                        .findByTrainingGroupeIdAndUserId(groupId, participant.getId());
+
+                if (retrievedInvitation == null) {
+                    TrainingInvitation invitation = TrainingInvitation.builder()
+                            .trainingGroupe(trainingGroupe)
+                            .userId(participant.getId())
+                            .userEmail(participant.getEmail())
+                            .userFullName(participant.getName())
+                            .companyId(companyId)
+                            .status(InvitationStatusEnum.NOT_SENT)
+                            .invitationDate(null)
+                            .trainingId(id)
+                            .trainingTheme(theme)
+                            .groupeName(name)
+                            .trainerName(trainerName)
+                            .participantCount(participantCount)
+                            .dates(dates)
+                            .location(location)
+                            .city(city)
+                            .build();
+                    trainingInvitations.add(invitation);
+                    newInvitationsCount++;
+                } else {
+                    existingInvitationsCount++;
+                    log.debug("Invitation already exists for user {} in group {}",
+                            participant.getId(), groupId);
+                }
+            }
+
+            // Enregistrement des nouvelles invitations
+            if (!trainingInvitations.isEmpty()) {
+                trainingInvitationRepository.saveAll(trainingInvitations);
+                log.info("Created {} new invitations for training group {}. {} existing invitations found.",
+                        newInvitationsCount, name, existingInvitationsCount);
+            } else {
+                log.info("No new invitations to create for training group {}. All {} participants already have invitations.",
+                        name, existingInvitationsCount);
+            }
+
+        } catch (Exception e) {
+            log.error("Erreur lors de la création des invitations pour le groupe {}: {}",
+                    trainingGroupe.getId(), e.getMessage(), e);
+            throw e; // Re-lancer l'exception pour que la transaction soit rollback
         }
-        // Enregistrement des invitations
-        trainingInvitationRepository.saveAll(trainingInvitations);
     }
 
     @Override
@@ -262,6 +297,64 @@ public class TrainingInvitationServiceImpl implements TrainingInvitationService 
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    @Override
+    public ResponseEntity<Void> respondInvitation(UUID invitationId, RespondInvitationDto respondInvitationDto) {
+        // 1. On vérifie que l'ID et le statut ne sont pas nuls dès le début.
+        if (respondInvitationDto.getUserId() == null || respondInvitationDto.getAction() == null) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        // 2. findById renvoie un Optional, ce qui nous aide à éviter les erreurs de type NullPointerException.
+        Optional<TrainingInvitation> optionalInvitation = trainingInvitationRepository.findById(invitationId);
+
+        // 3. On vérifie si l'invitation a été trouvée dans la base de données.
+        if (optionalInvitation.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        TrainingInvitation trainingInvitation = optionalInvitation.get();
+        String newStatus = respondInvitationDto.getAction();
+
+        // 4. On met à jour le statut en comparant les chaînes de caractères sans tenir compte de la casse.
+        if ("accept".equals(newStatus)) {
+            trainingInvitation.setStatus(InvitationStatusEnum.ACCEPTED);
+        } else if ("decline".equals(newStatus)) {
+            trainingInvitation.setStatus(InvitationStatusEnum.DECLINED);
+        } else {
+            // Si le statut envoyé n'est ni "Acceptée", ni "Rejetée", la requête est incorrecte.
+            return ResponseEntity.badRequest().build();
+        }
+
+        // 5. On sauvegarde l'entité mise à jour et on gère les erreurs potentielles.
+        try {
+            trainingInvitationRepository.save(trainingInvitation);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            // Si une erreur se produit lors de la communication avec la base de données.
+            // Il serait bien de logger l'erreur ici pour le débogage.
+            // log.error("Erreur lors de la sauvegarde de l'invitation : {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Override
+    public ResponseEntity<?> getTeamInvitations(Long managerId) {
+        if (managerId != null) {
+            List<Long> myTeamIds = authServiceClient.getMyTeam(managerId);
+            if (!myTeamIds.isEmpty()) {
+                List<TrainingInvitation> allByUserId = trainingInvitationRepository.findAllByUserIds(myTeamIds);
+                return ResponseEntity.ok(TrainingInvitationUtilMethods.mapToTrainingInvitationDtos(allByUserId));
+            }
+            return ResponseEntity.ok(Collections.emptyList());
+        }
+        return ResponseEntity.badRequest().build();
+    }
+
+    @Override
+    public ResponseEntity<?> respondTeamUserInvitation(UUID invitationId, RespondInvitationDto respondInvitationDto) {
+        return null;
     }
 
     /**

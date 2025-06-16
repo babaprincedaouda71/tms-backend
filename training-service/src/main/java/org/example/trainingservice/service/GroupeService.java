@@ -28,4 +28,8 @@ public interface GroupeService {
     ResponseEntity<?> getGroupToAddOrEdit(Long groupId);
 
     ResponseEntity<?> deleteGroup(Long groupId);
+
+    ResponseEntity<?> getParticipants(Long groupId);
+
+    ResponseEntity<?> removeGroupeParticipant(Long groupeId, Long participantId);
 }

@@ -22,6 +22,7 @@ import org.example.trainingservice.exceptions.TrainingNotFoundException;
 import org.example.trainingservice.exceptions.plan.ValidationException;
 import org.example.trainingservice.repository.OCFRepository;
 import org.example.trainingservice.repository.TrainerForTrainingGroupeRepository;
+import org.example.trainingservice.repository.TrainingInvitationRepository;
 import org.example.trainingservice.repository.plan.TrainingGroupeRepository;
 import org.example.trainingservice.repository.plan.TrainingRepository;
 import org.example.trainingservice.service.completion.CompletionUtilMethods;
@@ -46,6 +47,7 @@ public class TrainingGroupeServiceImpl implements TrainingGroupeService {
     private final CompletionUtilMethods completionUtilMethods;
     private final TrainingInvitationService trainingInvitationService;
     private final AuthServiceClient authServiceClient;
+    private final TrainingInvitationRepository trainingInvitationRepository;
 
     public TrainingGroupeServiceImpl(
             TrainingGroupeRepository trainingGroupeRepository,
@@ -57,7 +59,7 @@ public class TrainingGroupeServiceImpl implements TrainingGroupeService {
             GroupeCompletionService groupeCompletionService,
             CompletionUtilMethods completionUtilMethods,
             TrainingInvitationService trainingInvitationService,
-            AuthServiceClient authServiceClient) {
+            AuthServiceClient authServiceClient, TrainingInvitationRepository trainingInvitationRepository) {
         this.trainingGroupeRepository = trainingGroupeRepository;
         this.trainingRepository = trainingRepository;
         this.ocfRepository = ocfRepository;
@@ -68,6 +70,7 @@ public class TrainingGroupeServiceImpl implements TrainingGroupeService {
         this.completionUtilMethods = completionUtilMethods;
         this.trainingInvitationService = trainingInvitationService;
         this.authServiceClient = authServiceClient;
+        this.trainingInvitationRepository = trainingInvitationRepository;
     }
 
     @Override
@@ -473,29 +476,53 @@ public class TrainingGroupeServiceImpl implements TrainingGroupeService {
 
     @Override
     public ResponseEntity<?> getParticipantsForTrainingInvitation(Long groupId) {
-        log.info("getParticipantsForTrainingInvitation");
+        log.info("getParticipantsForTrainingInvitation - filtering participants with NOT_SENT invitations");
         try {
             // Récupérer le groupe
-            TrainingGroupe trainingGroupe = trainingGroupeRepository.findById(groupId).orElseThrow(() -> new TrainingGroupeNotFoundException("Training Groupe not found with ID : " + groupId, null));
+            TrainingGroupe trainingGroupe = trainingGroupeRepository.findById(groupId)
+                    .orElseThrow(() -> new TrainingGroupeNotFoundException(
+                            "Training Groupe not found with ID : " + groupId, null));
 
-            // Collecte des participants ids
-            Set<Long> participantIds = trainingGroupe.getUserGroupIds();
+            // Collecte des participants ids du groupe
+            Set<Long> allParticipantIds = trainingGroupe.getUserGroupIds();
 
             // Vérification pour s'assurer que ce n'est pas vide
-            if (participantIds.isEmpty()) {
-                log.info("No participants founds");
+            if (allParticipantIds == null || allParticipantIds.isEmpty()) {
+                log.info("No participants found in group {}", groupId);
                 return ResponseEntity.ok(Collections.emptyList());
             }
 
-            // Récupération des infos des users
-            List<ParticipantForCancel> allParticipants = new ArrayList<>();
+            // Récupérer directement les IDs des utilisateurs avec des invitations envoyées
+            // (requête optimisée en une seule fois)
+            Set<Long> usersWithSentInvitations = trainingInvitationRepository
+                    .findUserIdsWithSentInvitationsByGroupeId(groupId);
 
-            allParticipants = authServiceClient.getParticipantsEmail(participantIds);
+            // Filtrer les participants : garder seulement ceux qui n'ont pas d'invitation envoyée
+            Set<Long> participantsWithoutSentInvitations = allParticipantIds.stream()
+                    .filter(participantId -> !usersWithSentInvitations.contains(participantId))
+                    .collect(Collectors.toSet());
 
-            return ResponseEntity.ok(allParticipants);
-        } catch (Exception ignored) {
+            if (participantsWithoutSentInvitations.isEmpty()) {
+                log.info("All participants already have sent invitations for group {}", groupId);
+                return ResponseEntity.ok(Collections.emptyList());
+            }
+
+            // Récupération des infos des users qui n'ont pas encore reçu d'invitation
+            List<ParticipantForCancel> filteredParticipants = authServiceClient
+                    .getParticipantsEmail(participantsWithoutSentInvitations);
+
+            log.info("Found {} participants without sent invitations for group {}",
+                    filteredParticipants.size(), groupId);
+
+            return ResponseEntity.ok(filteredParticipants);
+
+        } catch (TrainingGroupeNotFoundException e) {
+            log.error("Training group not found: {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("Error while filtering participants for group {}: {}", groupId, e.getMessage(), e);
+            return ResponseEntity.ok(Collections.emptyList());
         }
-        return ResponseEntity.ok(Collections.emptyList());
     }
 
     /**

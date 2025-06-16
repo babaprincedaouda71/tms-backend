@@ -13,6 +13,7 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Repository
@@ -75,4 +76,16 @@ public interface TrainingInvitationRepository extends JpaRepository<TrainingInvi
                                                       Pageable pageable);
 
     List<TrainingInvitation> findByUserId(Long userId);
+
+    // Ajouter cette méthode dans TrainingInvitationRepository
+    /**
+     * Récupère les IDs des utilisateurs qui ont des invitations avec un statut différent de NOT_SENT
+     */
+    @Query("SELECT DISTINCT ti.userId FROM TrainingInvitation ti " +
+            "WHERE ti.trainingGroupe.id = :groupeId " +
+            "AND ti.status != org.example.trainingservice.enums.InvitationStatusEnum.NOT_SENT")
+    Set<Long> findUserIdsWithSentInvitationsByGroupeId(@Param("groupeId") Long groupeId);
+
+    @Query("SELECT ti FROM TrainingInvitation ti WHERE ti.userId IN :attr0")
+    List<TrainingInvitation> findAllByUserIds(List<Long> attr0);
 }

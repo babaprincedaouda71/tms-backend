@@ -10,6 +10,7 @@ import org.example.trainingservice.repository.GroupeRepository;
 import org.example.trainingservice.repository.NeedRepository;
 import org.example.trainingservice.service.completion.CompletionUtilMethods;
 import org.example.trainingservice.service.plan.GroupeCompletionService;
+import org.example.trainingservice.service.plan.TrainingInvitationService;
 import org.example.trainingservice.utils.GroupUtilMethods;
 import org.example.trainingservice.utils.TrainingGroupeUtilMethods;
 import org.springframework.http.ResponseEntity;
@@ -22,12 +23,14 @@ public class GroupParticipantsServiceImpl implements GroupParticipantsService {
     private final NeedRepository needRepository;
     private final CompletionUtilMethods completionUtilMethods;
     private final GroupeCompletionService groupeCompletionService;
+    private final TrainingInvitationService trainingInvitationService;
 
-    public GroupParticipantsServiceImpl(GroupeRepository groupeRepository, NeedRepository needRepository, CompletionUtilMethods completionUtilMethods, GroupeCompletionService groupeCompletionService) {
+    public GroupParticipantsServiceImpl(GroupeRepository groupeRepository, NeedRepository needRepository, CompletionUtilMethods completionUtilMethods, GroupeCompletionService groupeCompletionService, TrainingInvitationService trainingInvitationService) {
         this.groupeRepository = groupeRepository;
         this.needRepository = needRepository;
         this.completionUtilMethods = completionUtilMethods;
         this.groupeCompletionService = groupeCompletionService;
+        this.trainingInvitationService = trainingInvitationService;
     }
 
     @Override
