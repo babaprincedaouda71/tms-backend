@@ -67,11 +67,11 @@ public class TrainingGroupeUtilMethods {
             dto.setExternalTrainerName(trainingGroupe.getTrainer().getName());
             dto.setExternalTrainerEmail(trainingGroupe.getTrainer().getEmail());
             dto.setCost(trainingGroupe.getPrice());
-            dto.setTrainingType(TrainingType.EXTERNAL);
+            dto.setTrainingType(TrainingType.EXTERNAL.getDescription());
         } else {
             dto.setComment(trainingGroupe.getComment());
             dto.setInternalTrainerId(trainingGroupe.getInternalTrainerId());
-            dto.setTrainingType(TrainingType.INTERNAL);
+            dto.setTrainingType(TrainingType.INTERNAL.getDescription());
         }
 
         // Gestion de l'OCF dans le DTO de réponse
@@ -108,11 +108,11 @@ public class TrainingGroupeUtilMethods {
             dto.setExternalTrainerName(trainingGroupe.getTrainer().getName());
             dto.setExternalTrainerEmail(trainingGroupe.getTrainer().getEmail());
             dto.setCost(trainingGroupe.getPrice());
-            dto.setTrainingType(TrainingType.EXTERNAL);
+            dto.setTrainingType(TrainingType.EXTERNAL.getDescription());
         } else {
             dto.setComment(trainingGroupe.getComment());
             dto.setInternalTrainerId(trainingGroupe.getInternalTrainerId());
-            dto.setTrainingType(TrainingType.INTERNAL);
+            dto.setTrainingType(TrainingType.INTERNAL.getDescription());
         }
 
         // Gestion de l'OCF dans le DTO de réponse

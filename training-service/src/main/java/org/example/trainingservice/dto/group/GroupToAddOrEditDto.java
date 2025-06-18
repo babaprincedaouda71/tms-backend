@@ -43,7 +43,7 @@ public class GroupToAddOrEditDto {
 
     private Set<Long> userGroupIds;
 
-    private TrainingType trainingType;
+    private String trainingType;
 
     private TrainerDto trainer;
 

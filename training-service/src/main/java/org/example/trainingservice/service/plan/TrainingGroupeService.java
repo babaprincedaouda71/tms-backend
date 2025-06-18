@@ -34,4 +34,6 @@ public interface TrainingGroupeService {
     ResponseEntity<?> sendInvitations(Long groupId, SendInvitationDto sendInvitationDto);
 
     ResponseEntity<?> getParticipantsForTrainingInvitation(Long groupId);
+
+    ResponseEntity<?> getGroupDetailsForSendInvitationToTrainer(Long groupId);
 }

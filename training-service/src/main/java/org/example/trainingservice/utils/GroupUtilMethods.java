@@ -59,11 +59,11 @@ public class GroupUtilMethods {
             dto.setExternalTrainerName(groupe.getTrainer().getName());
             dto.setExternalTrainerEmail(groupe.getTrainer().getEmail());
             dto.setCost(groupe.getPrice());
-            dto.setTrainingType(TrainingType.EXTERNAL);
+            dto.setTrainingType(TrainingType.EXTERNAL.getDescription());
         } else {
             dto.setComment(groupe.getComment());
             dto.setInternalTrainerId(groupe.getInternalTrainerId());
-            dto.setTrainingType(TrainingType.INTERNAL);
+            dto.setTrainingType(TrainingType.INTERNAL.getDescription());
         }
 
         // Gestion de l'OCF dans le DTO de réponse

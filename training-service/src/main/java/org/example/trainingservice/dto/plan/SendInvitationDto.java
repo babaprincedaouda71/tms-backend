@@ -17,6 +17,8 @@ public class SendInvitationDto {
 
     private String content;
 
+    private Long trainerId;
+
     private Set<Long> participantIds;
 
     private Boolean sendSms;

@@ -8,8 +8,11 @@ import org.example.trainingservice.adapter.GroupeValidatable;
 import org.example.trainingservice.adapter.TrainingGroupeAdapter;
 import org.example.trainingservice.entity.Groupe;
 import org.example.trainingservice.entity.plan.TrainingGroupe;
+import org.example.trainingservice.enums.GroupeStatusEnums;
 import org.example.trainingservice.enums.TrainingType;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Slf4j
 @Service
@@ -78,6 +81,9 @@ public class GroupeCompletionService {
     public TrainingGroupe updateCompletionStatus(TrainingGroupe trainingGroupe) {
         boolean isComplete = isTrainingGroupeComplete(trainingGroupe);
         trainingGroupe.setIsAllFieldsFilled(isComplete);
+        if (isComplete) {
+            trainingGroupe.setStatus(GroupeStatusEnums.APPROVED);
+        }
         return trainingGroupe;
     }
 
@@ -161,22 +167,30 @@ public class GroupeCompletionService {
     }
 
     private boolean hasPlanningFields(GroupeValidatable validatable) {
-        return validatable.getLocation() == null
-                || validatable.getLocation().trim().isEmpty()
-                || validatable.getCity() == null
-                || validatable.getCity().trim().isEmpty()
-                || validatable.getDates() == null
-                || validatable.getDates().isEmpty()
-                || validatable.getMorningStartTime() == null
-                || validatable.getMorningEndTime() == null
-                || validatable.getAfternoonStartTime() == null
-                || validatable.getAfternoonEndTime() == null
+        return isBlank(validatable.getLocation())
+                || isBlank(validatable.getCity())
+                || isEmptyOrBlankList(validatable.getDates())
+                || isBlank(validatable.getMorningStartTime())
+                || isBlank(validatable.getMorningEndTime())
+                || isBlank(validatable.getAfternoonStartTime())
+                || isBlank(validatable.getAfternoonEndTime())
                 || validatable.getDayCount() == null
-                || validatable.getSiteIds() == null
-                || validatable.getSiteIds().isEmpty()
-                || validatable.getDepartmentIds() == null
-                || validatable.getDepartmentIds().isEmpty();
+                || isEmptyOrNull(validatable.getSiteIds())
+                || isEmptyOrNull(validatable.getDepartmentIds());
     }
+
+    private boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
+    }
+
+    private boolean isEmptyOrBlankList(List<String> list) {
+        return list == null || list.isEmpty() || list.stream().allMatch(s -> s == null || s.trim().isEmpty());
+    }
+
+    private boolean isEmptyOrNull(List<?> list) {
+        return list == null || list.isEmpty();
+    }
+
 
     private boolean hasParticipantsFields(GroupeValidatable validatable) {
         return validatable.getTargetAudience() == null

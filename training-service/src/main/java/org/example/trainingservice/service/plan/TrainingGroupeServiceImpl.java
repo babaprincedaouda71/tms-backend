@@ -7,6 +7,7 @@ import org.example.trainingservice.dto.group.*;
 import org.example.trainingservice.dto.need.DepartmentDto;
 import org.example.trainingservice.dto.need.SiteDto;
 import org.example.trainingservice.dto.ocf.OCFAddOrEditGroupDto;
+import org.example.trainingservice.dto.plan.GroupToSendInvitationDto;
 import org.example.trainingservice.dto.plan.ParticipantForCancel;
 import org.example.trainingservice.dto.plan.SendInvitationDto;
 import org.example.trainingservice.entity.OCF;
@@ -522,6 +523,33 @@ public class TrainingGroupeServiceImpl implements TrainingGroupeService {
         } catch (Exception e) {
             log.error("Error while filtering participants for group {}: {}", groupId, e.getMessage(), e);
             return ResponseEntity.ok(Collections.emptyList());
+        }
+    }
+
+    @Override
+    public ResponseEntity<?> getGroupDetailsForSendInvitationToTrainer(Long groupId) {
+        log.info("get group infos");
+        try {
+            // Récupérer le groupe
+            TrainingGroupe trainingGroupe = trainingGroupeRepository.findById(groupId)
+                    .orElseThrow(() -> new TrainingGroupeNotFoundException(
+                            "Training Groupe not found with ID : " + groupId, null));
+
+            // Création du dto
+            GroupToSendInvitationDto groupToSendInvitationDto = GroupToSendInvitationDto.builder()
+                    .id(trainingGroupe.getId())
+                    .name(trainingGroupe.getName())
+                    .participantCount(trainingGroupe.getParticipantCount())
+                    .location(trainingGroupe.getLocation())
+                    .targetAudience(trainingGroupe.getTargetAudience())
+                    .build();
+
+            // Retourner le résultat
+            return ResponseEntity.ok(groupToSendInvitationDto);
+
+        } catch (Exception e) {
+            log.error("Error while getting group details for send invitation to trainer: {}", e.getMessage(), e);
+            return ResponseEntity.ok(null);
         }
     }
 

@@ -6,7 +6,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.trainingservice.entity.plan.Plan;
 import org.example.trainingservice.entity.plan.Training;
 import org.example.trainingservice.entity.plan.TrainingGroupe;
+import org.example.trainingservice.enums.PlanStatusEnum;
+import org.example.trainingservice.enums.TrainingStatusEnum;
+import org.example.trainingservice.repository.plan.TrainingRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,6 +18,12 @@ import java.util.List;
 @Service
 @Slf4j
 public class PlanValidationService {
+
+    private final TrainingRepository trainingRepository;
+
+    public PlanValidationService(TrainingRepository trainingRepository) {
+        this.trainingRepository = trainingRepository;
+    }
 
     /**
      * Vérifie si un plan CSF peut être validé par l'OFPPT
@@ -53,7 +63,7 @@ public class PlanValidationService {
             }
 
             // Chaque formation CSF doit avoir au moins un groupe complet
-            if (hasAtLeastOneCompleteGroup(training)) {
+            if (hasNoCompleteGroup(training)) {
                 return false;
             }
         }
@@ -144,7 +154,7 @@ public class PlanValidationService {
         }
 
         // Vérifier qu'il y a au moins un groupe complet
-        if (hasAtLeastOneCompleteGroup(training)) {
+        if (hasNoCompleteGroup(training)) {
             detail.setComplete(false);
             if (training.getGroupes() == null || training.getGroupes().isEmpty()) {
                 detail.addMissingField("Aucun groupe de formation créé");
@@ -157,9 +167,9 @@ public class PlanValidationService {
     }
 
     /**
-     * Vérifie si une formation a au moins un groupe complet
+     * Vérifie si une formation n'a aucun groupe complet
      */
-    private boolean hasAtLeastOneCompleteGroup(Training training) {
+    private boolean hasNoCompleteGroup(Training training) {
         if (training.getGroupes() == null || training.getGroupes().isEmpty()) {
             return true;
         }
@@ -169,16 +179,69 @@ public class PlanValidationService {
     }
 
     /**
-     * Met à jour le statut de validation OFPPT d'un plan
+     * Met à jour le statut de validation OFPPT d'un plan et gère les formations CSF
      */
+    @Transactional
     public Plan updateOFPPTValidationStatus(Plan plan, boolean isValidated) {
         // Vérifier que la validation est possible avant de l'activer
         if (isValidated && !canPlanBeOFPPTValidated(plan)) {
             throw new IllegalStateException("Le plan ne peut pas être validé OFPPT car il ne satisfait pas tous les critères");
         }
 
+        // Mettre à jour le statut de validation du plan
         plan.setIsOFPPTValidation(isValidated);
+        plan.setStatus(PlanStatusEnum.PLANNED);
+
+        // Si la validation OFPPT est activée, mettre à jour le statut des formations CSF
+        if (isValidated) {
+            updateCSFTrainingsStatus(plan);
+        }
+
         return plan;
+    }
+
+    /**
+     * Met à jour le statut des formations CSF du plan en "PLANNED" lors de la validation OFPPT
+     *
+     * @param plan Le plan dont les formations CSF doivent être mises à jour
+     */
+    @Transactional
+    protected void updateCSFTrainingsStatus(Plan plan) {
+        log.info("Mise à jour du statut des formations CSF pour le plan validé OFPPT: {}", plan.getId());
+
+        // Récupérer toutes les formations CSF du plan
+        List<Training> csfTrainings = plan.getTrainings().stream()
+                .filter(training -> Boolean.TRUE.equals(training.getCsf()))
+                .filter(training -> !TrainingStatusEnum.PLANNED.equals(training.getStatus())) // Éviter les mises à jour inutiles
+                .toList();
+
+        if (csfTrainings.isEmpty()) {
+            log.info("Aucune formation CSF à mettre à jour pour le plan: {}", plan.getId());
+            return;
+        }
+
+        // Mettre à jour le statut de chaque formation CSF
+        List<Training> trainingsToUpdate = new ArrayList<>();
+        for (Training training : csfTrainings) {
+            // Vérifier que la formation est complète avant de la marquer comme planifiée
+            if (Boolean.TRUE.equals(training.getIsAllFieldsFilled())) {
+                training.setStatus(TrainingStatusEnum.PLANNED);
+                trainingsToUpdate.add(training);
+
+                log.debug("Formation CSF '{}' (ID: {}) mise à jour vers le statut PLANNED",
+                        training.getTheme(), training.getId());
+            } else {
+                log.warn("Formation CSF '{}' (ID: {}) non complète, statut non mis à jour",
+                        training.getTheme(), training.getId());
+            }
+        }
+
+        // Sauvegarder en batch pour optimiser les performances
+        if (!trainingsToUpdate.isEmpty()) {
+            trainingRepository.saveAll(trainingsToUpdate);
+            log.info("Statut mis à jour pour {} formations CSF du plan: {}",
+                    trainingsToUpdate.size(), plan.getId());
+        }
     }
 
     // Classes pour le rapport de validation

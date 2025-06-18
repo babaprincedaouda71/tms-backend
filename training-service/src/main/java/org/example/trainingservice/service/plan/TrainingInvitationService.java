@@ -13,6 +13,8 @@ public interface TrainingInvitationService {
 
     ResponseEntity<?> sendInvitations(Long groupId, SendInvitationDto sendInvitationDto);
 
+    ResponseEntity<?> sendTrainerInvitation(Long groupId, SendInvitationDto sendInvitationDto);
+
     void createTrainingInvitation(TrainingGroupe trainingGroupe, Set<Long> userGroupIds);
 
     ResponseEntity<?> getUserInvitations(Long userId);

@@ -201,6 +201,11 @@ public class TrainingInvitationServiceImpl implements TrainingInvitationService 
     }
 
     @Override
+    public ResponseEntity<?> sendTrainerInvitation(Long groupId, SendInvitationDto sendInvitationDto) {
+        return null;
+    }
+
+    @Override
     @Transactional // Assurer la cohérence transactionnelle
     public void createTrainingInvitation(TrainingGroupe trainingGroupe, Set<Long> userGroupIds) {
         try {

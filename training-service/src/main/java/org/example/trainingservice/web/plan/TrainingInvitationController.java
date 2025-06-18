@@ -27,6 +27,11 @@ public class TrainingInvitationController {
         return trainingInvitationService.sendInvitations(groupId, sendInvitationDto);
     }
 
+    @PostMapping("/send-trainer-invitation/{groupId}")
+    public ResponseEntity<?> sendTrainerInvitation(@PathVariable Long groupId, @RequestBody SendInvitationDto sendInvitationDto) {
+        return trainingInvitationService.sendTrainerInvitation(groupId, sendInvitationDto);
+    }
+
     @GetMapping("/get/userInvitations/{userId}")
     public ResponseEntity<?> getUserInvitations(@PathVariable Long userId) {
         return trainingInvitationService.getUserInvitations(userId);
