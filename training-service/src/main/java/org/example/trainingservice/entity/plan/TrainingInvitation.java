@@ -38,6 +38,9 @@ public class TrainingInvitation {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
+    @Builder.Default
+    private Boolean isTrainer = false;
+
     @Column(name = "company_id", nullable = false)
     private Long companyId;
 

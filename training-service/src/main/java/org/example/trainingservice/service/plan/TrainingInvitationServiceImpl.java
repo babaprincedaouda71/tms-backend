@@ -201,8 +201,105 @@ public class TrainingInvitationServiceImpl implements TrainingInvitationService 
     }
 
     @Override
+    @Transactional
     public ResponseEntity<?> sendTrainerInvitation(Long groupId, SendInvitationDto sendInvitationDto) {
-        return null;
+        try {
+            log.info("Envoi invitation formateur pour le groupe {}", groupId);
+
+            // 1. Validation
+            if (sendInvitationDto.getTrainerId() == null) {
+                return ResponseEntity.badRequest().body("L'ID du formateur est obligatoire");
+            }
+
+            // 2. Récupération du groupe
+            Optional<TrainingGroupe> groupeOpt = trainingGroupeRepository.findById(groupId);
+            if (groupeOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            TrainingGroupe groupe = groupeOpt.get();
+
+            // 3. Récupération des infos formateur
+            Long trainerId = sendInvitationDto.getTrainerId();
+            List<ParticipantForCancel> trainerList;
+            try {
+                trainerList = authServiceClient.getParticipantsEmail(Set.of(trainerId));
+                if (trainerList.isEmpty()) {
+                    return ResponseEntity.badRequest().body("Formateur non trouvé");
+                }
+            } catch (Exception e) {
+                log.error("Erreur récupération formateur {}: {}", trainerId, e.getMessage());
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                        .body("Erreur lors de la récupération du formateur");
+            }
+
+            ParticipantForCancel trainerInfo = trainerList.get(0);
+
+            // 4. Vérification invitation existante
+            TrainingInvitation existingInvitation = trainingInvitationRepository
+                    .findByTrainingGroupeIdAndUserId(groupId, trainerId);
+
+            if (existingInvitation != null && existingInvitation.getStatus() != InvitationStatusEnum.NOT_SENT) {
+                return ResponseEntity.badRequest()
+                        .body("Invitation déjà envoyée à ce formateur");
+            }
+
+            // 5. Création invitation si nécessaire
+            if (existingInvitation == null) {
+                Training training = groupe.getTraining();
+                Long companyId = SecurityUtils.getCurrentCompanyId();
+
+                existingInvitation = TrainingInvitation.builder()
+                        .trainingGroupe(groupe)
+                        .userId(trainerId)
+                        .userEmail(trainerInfo.getEmail())
+                        .userFullName(trainerInfo.getName())
+                        .companyId(companyId)
+                        .status(InvitationStatusEnum.NOT_SENT)
+                        .trainingId(training.getId())
+                        .trainingTheme(training.getTheme())
+                        .groupeName(groupe.getName())
+                        .trainerName(trainerInfo.getName())
+                        .participantCount(groupe.getParticipantCount())
+                        .dates(groupe.getDates())
+                        .isTrainer(Boolean.TRUE)
+                        .location(groupe.getLocation())
+                        .city(groupe.getCity())
+                        .build();
+
+                existingInvitation = trainingInvitationRepository.save(existingInvitation);
+            }
+
+            // 6. Envoi email
+            SendInvitationEmailRequest emailRequest = SendInvitationEmailRequest.builder()
+                    .emails(Set.of(trainerInfo.getEmail()))
+                    .object(sendInvitationDto.getObject())
+                    .message(sendInvitationDto.getContent())
+                    .build();
+
+            try {
+                notificationServiceClient.sendInvitationEmails(emailRequest);
+            } catch (Exception e) {
+                log.error("Erreur envoi email formateur", e);
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                        .body("Erreur lors de l'envoi de l'email");
+            }
+
+            // 7. Mise à jour statut
+            existingInvitation.setStatus(InvitationStatusEnum.PENDING);
+            existingInvitation.setInvitationDate(LocalDate.now());
+            trainingInvitationRepository.save(existingInvitation);
+
+            log.info("Invitation formateur envoyée avec succès pour le groupe {}", groupId);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Invitation formateur envoyée avec succès",
+                    "trainerEmail", trainerInfo.getEmail()
+            ));
+
+        } catch (Exception e) {
+            log.error("Erreur envoi invitation formateur groupe {}", groupId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Erreur inattendue lors de l'envoi de l'invitation");
+        }
     }
 
     @Override

@@ -23,7 +23,7 @@ public interface TrainingInvitationRepository extends JpaRepository<TrainingInvi
      * Trouver toutes les factures d'un groupe (optimisé)
      */
     @Query("SELECT ti FROM TrainingInvitation ti " +
-            "WHERE ti.trainingGroupe.id = :groupId ")
+            "WHERE ti.trainingGroupe.id = :groupId AND ti.isTrainer = false")
     List<TrainingInvitation> findByTrainingGroupeId(@Param("groupId") Long groupId);
 
     /*
