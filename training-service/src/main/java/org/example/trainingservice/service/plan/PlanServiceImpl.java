@@ -184,7 +184,7 @@ public class PlanServiceImpl implements PlanService {
                 .endDate(addPlanDto.getEndDate())
                 .year(LocalDate.now().getYear())
                 .estimatedBudget(addPlanDto.getEstimatedBudget())
-                .status(PlanStatusEnum.Non_Planifié)
+                .status(PlanStatusEnum.NOT_PLANNED)
                 .isCSFPlan(isCSFPlan)
                 .isOFPPTValidation(false)
                 .build();
@@ -302,7 +302,7 @@ public class PlanServiceImpl implements PlanService {
                 .csfPlanifie(need.getCsfPlanifie())
                 .creationDate(need.getCreationDate())
                 .source(need.getSource())
-                .status(TrainingStatusEnum.Non_Planifié)
+                .status(TrainingStatusEnum.NOT_PLANNED)
                 .year(need.getYear())
                 .wishDate(need.getWishDate())
                 .requesterId(need.getRequesterId())
@@ -649,10 +649,10 @@ public class PlanServiceImpl implements PlanService {
     private NeedStatusEnums determineNeedStatus(Training training) {
         // Logique métier pour déterminer le statut approprié
         return switch (training.getStatus()) {
-            case Non_Planifié -> NeedStatusEnums.Validé;
-            case Planifié -> NeedStatusEnums.Validé;
-            case En_Cours -> NeedStatusEnums.Validé;
-            default -> NeedStatusEnums.Validé;
+            case NOT_PLANNED -> NeedStatusEnums.APPROVED;
+            case PLANNED -> NeedStatusEnums.APPROVED;
+            case IN_PROGRESS -> NeedStatusEnums.APPROVED;
+            default -> NeedStatusEnums.APPROVED;
         };
     }
 

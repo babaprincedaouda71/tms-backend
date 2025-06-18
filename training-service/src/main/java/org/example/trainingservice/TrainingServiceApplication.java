@@ -46,7 +46,7 @@ public class TrainingServiceApplication {
                     .startDate(LocalDate.of(2025, 1, 1))
                     .endDate(LocalDate.of(2025, 12, 31))
                     .estimatedBudget(BigDecimal.valueOf(65000))
-                    .status(PlanStatusEnum.Non_Planifié)
+                    .status(PlanStatusEnum.NOT_PLANNED)
                     .build();
             planRepository.save(plan);
         };

@@ -12,7 +12,7 @@ public class PlanUtilMethods {
                 .endDate(plan.getEndDate())
                 .year(plan.getYear())
                 .estimatedBudget(plan.getEstimatedBudget())
-                .status(plan.getStatus())
+                .status(plan.getStatus().getDescription())
                 .isCSFPlan(plan.getIsCSFPlan())
                 .isOFPPTValidation(plan.getIsOFPPTValidation())
                 .build();

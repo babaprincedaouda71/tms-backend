@@ -52,7 +52,7 @@ public class GroupExternalProviderServiceImpl implements GroupExternalProviderSe
         groupe.setName("Groupe " + ((need.getNumberOfGroup()) + 1));
         groupe.setNeed(need);
         groupe.setCompanyId(need.getCompanyId());
-        groupe.setTrainingType(TrainingType.Externe);
+        groupe.setTrainingType(TrainingType.EXTERNAL);
 
         if (addOrEditGroupExternalProviderDto.getOcf() != null) {
             OCFAddOrEditGroupDto ocfDto = addOrEditGroupExternalProviderDto.getOcf();
@@ -163,7 +163,7 @@ public class GroupExternalProviderServiceImpl implements GroupExternalProviderSe
         }
 
         groupe.setPrice(addOrEditGroupExternalProviderDto.getCost());
-        groupe.setTrainingType(TrainingType.Externe);
+        groupe.setTrainingType(TrainingType.EXTERNAL);
 
         // Vérification si le groupe est complet
         groupe = groupeCompletionService.updateCompletionStatus(groupe);

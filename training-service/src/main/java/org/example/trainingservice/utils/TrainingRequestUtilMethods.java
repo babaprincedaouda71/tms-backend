@@ -68,7 +68,7 @@ public class TrainingRequestUtilMethods {
                 .domainName(request.getDomain())
                 .siteNames(List.of(request.getSite()))
                 .departmentNames(List.of(request.getDepartment()))
-                .status(NeedStatusEnums.Brouillon)  // statut par défaut pour les besoins issus de demandes
+                .status(NeedStatusEnums.DRAFT)  // statut par défaut pour les besoins issus de demandes
                 .source(NeedSource.Individual_Requests)  // source indiquant qu'il s'agit d'une demande individuelle
                 .creationDate(LocalDate.now().toString())
                 // valeurs par défaut pour les champs obligatoires

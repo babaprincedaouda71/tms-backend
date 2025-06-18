@@ -16,7 +16,7 @@ public class TrainingUtilMethods {
                 .creationDate(training.getCreationDate())
                 .type(training.getType())
                 .csf(training.getCsf())
-                .status(training.getStatus().toString())
+                .status(training.getStatus().getDescription())
                 .build();
     }
 

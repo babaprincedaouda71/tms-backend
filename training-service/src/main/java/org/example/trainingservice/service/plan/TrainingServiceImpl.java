@@ -111,7 +111,7 @@ public class TrainingServiceImpl implements TrainingService {
                         .training(existingTraining) // Association du groupe au besoin existant
                         .companyId(companyId)
                         .name("Groupe " + (existingGroupCount + i)) // Nommer les nouveaux groupes en conséquence
-                        .status(GroupeStatusEnums.Brouillon)
+                        .status(GroupeStatusEnums.DRAFT)
                         .build();
                 newGroups.add(groupe);
             }
@@ -292,7 +292,7 @@ public class TrainingServiceImpl implements TrainingService {
      */
     private Training getTrainingForCancellation(UUID trainingId, Long companyId) {
         return trainingRepository.findByIdAndCompanyId(trainingId, companyId)
-                .filter(training -> !TrainingStatusEnum.Annulé.equals(training.getStatus()))
+                .filter(training -> !TrainingStatusEnum.CANCELLED.equals(training.getStatus()))
                 .orElseThrow(() -> new TrainingNotFoundException(
                         "Formation non trouvée ou déjà annulée",
                         Map.of("trainingId", trainingId.toString(), "companyId", companyId.toString()).toString()
@@ -332,7 +332,7 @@ public class TrainingServiceImpl implements TrainingService {
         if (training.getGroupes() != null && !training.getGroupes().isEmpty()) {
             TrainingGroupe firstGroup = training.getGroupes().get(0);
 
-            if (TrainingType.Externe.equals(firstGroup.getTrainingType())
+            if (TrainingType.EXTERNAL.equals(firstGroup.getTrainingType())
                     && firstGroup.getTrainer() != null
                     && StringUtils.isNotBlank(firstGroup.getTrainer().getEmail())) {
                 emails.add(firstGroup.getTrainer().getEmail());
@@ -347,7 +347,7 @@ public class TrainingServiceImpl implements TrainingService {
         if (training.getGroupes() != null && !training.getGroupes().isEmpty()) {
             TrainingGroupe firstGroup = training.getGroupes().get(0);
 
-            if (TrainingType.Externe.equals(firstGroup.getTrainingType())
+            if (TrainingType.EXTERNAL.equals(firstGroup.getTrainingType())
                     && firstGroup.getOcf() != null
                     && StringUtils.isNotBlank(firstGroup.getOcf().getEmailMainContact())) {
                 emails.add(firstGroup.getOcf().getEmailMainContact());
@@ -364,7 +364,7 @@ public class TrainingServiceImpl implements TrainingService {
                 && !training.getGroupes().isEmpty()) {
 
             TrainingGroupe firstGroup = training.getGroupes().get(0);
-            if (TrainingType.Interne.equals(firstGroup.getTrainingType())
+            if (TrainingType.INTERNAL.equals(firstGroup.getTrainingType())
                     && firstGroup.getInternalTrainerId() != null) {
                 participantIds.add(firstGroup.getInternalTrainerId());
             }
@@ -419,7 +419,7 @@ public class TrainingServiceImpl implements TrainingService {
      */
     @Transactional
     void updateTrainingStatus(Training training) {
-        training.setStatus(TrainingStatusEnum.Annulé);
+        training.setStatus(TrainingStatusEnum.CANCELLED);
         trainingRepository.save(training);
         log.debug("Training status updated to CANCELLED for ID: {}", training.getId());
     }

@@ -89,7 +89,7 @@ public class TrainingRequestServiceImpl implements TrainingRequestService {
                         .need(newNeed)
                         .companyId(SecurityUtils.getCurrentCompanyId())
                         .name("Groupe " + (i + 1))
-                        .status(GroupeStatusEnums.Brouillon)
+                        .status(GroupeStatusEnums.DRAFT)
                         .build();
                 groupes.add(groupe);
             }

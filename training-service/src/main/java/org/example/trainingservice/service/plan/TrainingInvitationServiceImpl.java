@@ -345,7 +345,7 @@ public class TrainingInvitationServiceImpl implements TrainingInvitationService 
             List<Long> myTeamIds = authServiceClient.getMyTeam(managerId);
             if (!myTeamIds.isEmpty()) {
                 List<TrainingInvitation> allByUserId = trainingInvitationRepository.findAllByUserIds(myTeamIds);
-                return ResponseEntity.ok(TrainingInvitationUtilMethods.mapToTrainingInvitationDtos(allByUserId));
+                return ResponseEntity.ok(TrainingInvitationUtilMethods.mapToUserInvitationDtos(allByUserId));
             }
             return ResponseEntity.ok(Collections.emptyList());
         }

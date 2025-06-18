@@ -64,9 +64,9 @@ public class GroupeCompletionService {
         }
 
         // En fonction du type de formation, vérifier que le provider renseigné correspond
-        if (validatable.getTrainingType() == TrainingType.Interne) {
+        if (validatable.getTrainingType() == TrainingType.INTERNAL) {
             return internalPresent;
-        } else if (validatable.getTrainingType() == TrainingType.Externe) {
+        } else if (validatable.getTrainingType() == TrainingType.EXTERNAL) {
             return externalPresent;
         }
         return false;
@@ -141,9 +141,9 @@ public class GroupeCompletionService {
         if (internalPresent && externalPresent) {
             report.addMissingField("Provider", "Fournir uniquement soit Provider Interne soit Provider Externe, pas les deux en même temps");
         } else {
-            if (validatable.getTrainingType() == TrainingType.Interne && !internalPresent) {
+            if (validatable.getTrainingType() == TrainingType.INTERNAL && !internalPresent) {
                 report.addMissingField("Provider Interne", getMissingInternalProviderFields(validatable));
-            } else if (validatable.getTrainingType() == TrainingType.Externe && !externalPresent) {
+            } else if (validatable.getTrainingType() == TrainingType.EXTERNAL && !externalPresent) {
                 report.addMissingField("Provider Externe", getMissingExternalProviderFields(validatable));
             }
         }

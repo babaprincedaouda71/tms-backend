@@ -27,7 +27,7 @@ public class PlanDto {
     @Column(precision = 19, scale = 2)
     private BigDecimal estimatedBudget;
 
-    private PlanStatusEnum status;
+    private String status;
 
     private Boolean isCSFPlan;
 

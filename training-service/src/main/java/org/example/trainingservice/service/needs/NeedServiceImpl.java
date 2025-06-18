@@ -67,7 +67,7 @@ public class NeedServiceImpl implements NeedService {
         log.info("Fetching all validated needs to add to plan.");
         Long companyId = SecurityUtils.getCurrentCompanyId();
         try {
-            List<Need> allValidatedNeeds = needRepository.findAllByCompanyIdAndStatus(companyId, NeedStatusEnums.Validé);
+            List<Need> allValidatedNeeds = needRepository.findAllByCompanyIdAndStatus(companyId, NeedStatusEnums.APPROVED);
             if (allValidatedNeeds.isEmpty()) {
                 log.info("No validated needs found.");
                 return new ResponseEntity<>(HttpStatus.NO_CONTENT);
@@ -113,7 +113,7 @@ public class NeedServiceImpl implements NeedService {
                             .need(needToSave) // Association du groupe au besoin
                             .companyId(companyId) // Récupération de l'ID de l'entreprise
                             .name("Groupe " + i)
-                            .status(GroupeStatusEnums.Brouillon)
+                            .status(GroupeStatusEnums.DRAFT)
                             .build();
                     groupes.add(groupe);
                 }
@@ -160,10 +160,23 @@ public class NeedServiceImpl implements NeedService {
     @Override
     public ResponseEntity<?> updateStatus(UpdateStatusRequestDto updateStatusRequestDto) {
         log.info("Updating status of strategic axes need.");
-        Need found = needRepository.findByIdAndCompanyId(updateStatusRequestDto.getId(), SecurityUtils.getCurrentCompanyId()).orElseThrow(() -> new NeedNotFoundException("Need not found", null));
-        found.setStatus(NeedStatusEnums.valueOf(updateStatusRequestDto.getStatus()));
-        log.info("Successfully updated status of strategic axes need.");
-        return ResponseEntity.ok(needRepository.save(found));
+
+        try {
+            Need found = needRepository.findByIdAndCompanyId(
+                    updateStatusRequestDto.getId(),
+                    SecurityUtils.getCurrentCompanyId()
+            ).orElseThrow(() -> new NeedNotFoundException("Need not found", null));
+
+            found.setStatus(NeedStatusEnums.fromDescription(updateStatusRequestDto.getStatus()));
+
+            log.info("Successfully updated status of strategic axes need.");
+            return ResponseEntity.ok(needRepository.save(found));
+
+        } catch (IllegalArgumentException e) {
+            // Gestion des erreurs de conversion de statut
+            log.error("Invalid status provided: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @Override
@@ -236,7 +249,7 @@ public class NeedServiceImpl implements NeedService {
                         .need(existingNeed) // Association du groupe au besoin existant
                         .companyId(companyId)
                         .name("Groupe " + (existingGroupCount + i)) // Nommer les nouveaux groupes en conséquence
-                        .status(GroupeStatusEnums.Brouillon)
+                        .status(GroupeStatusEnums.DRAFT)
                         .build();
                 newGroups.add(groupe);
             }

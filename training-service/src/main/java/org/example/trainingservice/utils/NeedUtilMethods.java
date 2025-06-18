@@ -38,7 +38,7 @@ public class NeedUtilMethods {
                 .companyId(companyId)
                 .creationDate(LocalDate.now().toString())
                 .source(NeedSource.Strategic_Axes)
-                .status(NeedStatusEnums.Brouillon)
+                .status(NeedStatusEnums.DRAFT)
                 .build();
     }
 
@@ -61,7 +61,7 @@ public class NeedUtilMethods {
                 .site(need.getSiteNames() != null ? String.join(",\n", need.getSiteNames()) : null)
                 .department(need.getDepartmentNames() != null && !need.getDepartmentNames().isEmpty() ? String.join(",\n", need.getDepartmentNames()) : null)
                 .creationDate(need.getCreationDate())
-                .status(need.getStatus() != null ? need.getStatus().toString() : null)
+                .status(need.getStatus() != null ? need.getStatus().getDescription() : null)
                 .build();
     }
 

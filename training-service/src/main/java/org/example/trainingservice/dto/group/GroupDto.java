@@ -23,5 +23,5 @@ public class GroupDto {
 
     private String trainingProvider;
 
-    private GroupeStatusEnums status;
+    private String status;
 }

@@ -487,7 +487,7 @@ public class MyEvaluationsServiceImpl implements MyEvaluationsService {
                                     .theme(themeValue)
                                     .questionnaire(questionnaire.getTitle())
                                     .companyId(companyId)
-                                    .status(NeedStatusEnums.Brouillon) // Assurez-vous que cet enum existe et est correctement importé
+                                    .status(NeedStatusEnums.DRAFT) // Assurez-vous que cet enum existe et est correctement importé
                                     // Initialisez les autres champs requis de "Need" avec des valeurs par défaut ou null si permis
                                     .build();
 

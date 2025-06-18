@@ -842,7 +842,7 @@ public class TeamEvaluationsServiceImpl implements TeamEvaluationsService {
                             .questionnaire(questionnaire.getTitle())
                             .companyId(companyId)
                             // Initialiser les autres champs requis de "Need"
-                            .status(NeedStatusEnums.Brouillon)
+                            .status(NeedStatusEnums.DRAFT)
                             .build();
 
 
@@ -851,7 +851,7 @@ public class TeamEvaluationsServiceImpl implements TeamEvaluationsService {
                             .need(need) // Association du groupe au besoin
                             .companyId(companyId) // Récupération de l'ID de l'entreprise
                             .name("Groupe 1")
-                            .status(GroupeStatusEnums.Brouillon)
+                            .status(GroupeStatusEnums.DRAFT)
                             .build();
 
                     need.setGroupes(List.of(groupe));

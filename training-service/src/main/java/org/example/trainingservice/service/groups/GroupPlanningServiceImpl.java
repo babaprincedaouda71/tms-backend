@@ -58,7 +58,7 @@ public class GroupPlanningServiceImpl implements GroupPlanningService {
                 .afternoonEndTime(addOrEditGroupPlanningDto.getAfternoonEndTime())
                 .name("Groupe " + ((need.getNumberOfGroup()) + 1))
                 .dayCount(addOrEditGroupPlanningDto.getDates().size())
-                .status(GroupeStatusEnums.Brouillon)
+                .status(GroupeStatusEnums.DRAFT)
                 .build();
 
         // Vérification si le groupe est complet

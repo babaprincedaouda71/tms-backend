@@ -108,7 +108,7 @@ public class TrainingGroupeServiceImpl implements TrainingGroupeService {
                 .afternoonEndTime(addOrEditGroupPlanningDto.getAfternoonEndTime())
                 .name("Groupe " + ((training.getNumberOfGroup()) + 1))
                 .dayCount(addOrEditGroupPlanningDto.getDates().size())
-                .status(GroupeStatusEnums.Brouillon)
+                .status(GroupeStatusEnums.DRAFT)
                 .build();
 
         // Vérifier la complétude et mettre à jour le champ isAllFieldsFilled
@@ -252,7 +252,7 @@ public class TrainingGroupeServiceImpl implements TrainingGroupeService {
                 .internalTrainerId(addOrEditGroupInternalProviderDto.getTrainer().getId())
                 .trainerName(addOrEditGroupInternalProviderDto.getTrainer().getName())
                 .comment(addOrEditGroupInternalProviderDto.getComment())
-                .trainingType(TrainingType.Interne)
+                .trainingType(TrainingType.INTERNAL)
                 .build();
 
         // Vérifier la complétude et mettre à jour le champ isAllFieldsFilled
@@ -275,7 +275,7 @@ public class TrainingGroupeServiceImpl implements TrainingGroupeService {
         trainingGroupe.setInternalTrainerId(addOrEditGroupInternalProviderDto.getTrainer().getId());
         trainingGroupe.setComment(addOrEditGroupInternalProviderDto.getComment());
         trainingGroupe.setTrainerName(addOrEditGroupInternalProviderDto.getTrainer().getName());
-        trainingGroupe.setTrainingType(TrainingType.Interne);
+        trainingGroupe.setTrainingType(TrainingType.INTERNAL);
 
         // Vérifier la complétude et mettre à jour le champ isAllFieldsFilled
         boolean wasComplete = trainingGroupe.getIsAllFieldsFilled();
@@ -303,7 +303,7 @@ public class TrainingGroupeServiceImpl implements TrainingGroupeService {
         trainingGroupe.setName("Groupe " + ((training.getNumberOfGroup()) + 1));
         trainingGroupe.setTraining(training);
         trainingGroupe.setCompanyId(training.getCompanyId());
-        trainingGroupe.setTrainingType(TrainingType.Externe);
+        trainingGroupe.setTrainingType(TrainingType.EXTERNAL);
 
         if (addOrEditGroupExternalProviderDto.getOcf() != null) {
             OCFAddOrEditGroupDto ocfDto = addOrEditGroupExternalProviderDto.getOcf();
@@ -414,7 +414,7 @@ public class TrainingGroupeServiceImpl implements TrainingGroupeService {
         }
 
         trainingGroupe.setPrice(addOrEditGroupExternalProviderDto.getCost());
-        trainingGroupe.setTrainingType(TrainingType.Externe);
+        trainingGroupe.setTrainingType(TrainingType.EXTERNAL);
 
         // Vérifier la complétude et mettre à jour le champ isAllFieldsFilled
         boolean wasComplete = trainingGroupe.getIsAllFieldsFilled();

@@ -53,9 +53,9 @@ public class TrainingGroupeCompletionService {
         }
 
         // En fonction du type de formation, vérifier que le provider renseigné correspond :
-        if (trainingGroupe.getTrainingType() == TrainingType.Interne) {
+        if (trainingGroupe.getTrainingType() == TrainingType.INTERNAL) {
             return internalPresent;
-        } else if (trainingGroupe.getTrainingType() == TrainingType.Externe) {
+        } else if (trainingGroupe.getTrainingType() == TrainingType.EXTERNAL) {
             return externalPresent;
         }
         // Si le type n'est pas défini, considérer le groupe comme incomplet
@@ -100,9 +100,9 @@ public class TrainingGroupeCompletionService {
             // Conflit : les deux providers sont renseignés
             report.addMissingField("Provider", "Fournir uniquement soit Provider Interne soit Provider Externe, pas les deux en même temps");
         } else {
-            if (trainingGroupe.getTrainingType() == TrainingType.Interne && !internalPresent) {
+            if (trainingGroupe.getTrainingType() == TrainingType.INTERNAL && !internalPresent) {
                 report.addMissingField("Provider Interne", getMissingInternalProviderFields(trainingGroupe));
-            } else if (trainingGroupe.getTrainingType() == TrainingType.Externe && !externalPresent) {
+            } else if (trainingGroupe.getTrainingType() == TrainingType.EXTERNAL && !externalPresent) {
                 report.addMissingField("Provider Externe", getMissingExternalProviderFields(trainingGroupe));
             }
         }

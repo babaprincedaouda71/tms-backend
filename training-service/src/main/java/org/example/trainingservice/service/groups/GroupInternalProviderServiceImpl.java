@@ -40,7 +40,7 @@ public class GroupInternalProviderServiceImpl implements GroupInternalProviderSe
                 .internalTrainerId(addOrEditGroupInternalProviderDto.getTrainer().getId())
                 .trainerName(addOrEditGroupInternalProviderDto.getTrainer().getName())
                 .comment(addOrEditGroupInternalProviderDto.getComment())
-                .trainingType(TrainingType.Interne)
+                .trainingType(TrainingType.INTERNAL)
                 .build();
 
         // Vérification si le groupe est complet
@@ -64,7 +64,7 @@ public class GroupInternalProviderServiceImpl implements GroupInternalProviderSe
         groupe.setInternalTrainerId(addOrEditGroupInternalProviderDto.getTrainer().getId());
         groupe.setComment(addOrEditGroupInternalProviderDto.getComment());
         groupe.setTrainerName(addOrEditGroupInternalProviderDto.getTrainer().getName());
-        groupe.setTrainingType(TrainingType.Interne);
+        groupe.setTrainingType(TrainingType.INTERNAL);
 
         // Vérification si le groupe est complet
         groupe = groupeCompletionService.updateCompletionStatus(groupe);

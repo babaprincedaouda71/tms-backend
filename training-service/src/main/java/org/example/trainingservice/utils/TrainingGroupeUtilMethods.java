@@ -38,7 +38,7 @@ public class TrainingGroupeUtilMethods {
         // Pour l'instant, je le laisse comme ça, tu devras implémenter la logique pour le récupérer
         dto.setTrainingProvider(null); // À implémenter
         // Il faudra convertir le statut de l'entité Groupe vers l'enum GroupeStatusEnums
-        dto.setStatus(trainingGroupe.getStatus()); // À implémenter la conversion de statut
+        dto.setStatus(trainingGroupe.getStatus().getDescription()); // À implémenter la conversion de statut
         return dto;
     }
 
@@ -67,11 +67,11 @@ public class TrainingGroupeUtilMethods {
             dto.setExternalTrainerName(trainingGroupe.getTrainer().getName());
             dto.setExternalTrainerEmail(trainingGroupe.getTrainer().getEmail());
             dto.setCost(trainingGroupe.getPrice());
-            dto.setTrainingType(TrainingType.Externe);
+            dto.setTrainingType(TrainingType.EXTERNAL);
         } else {
             dto.setComment(trainingGroupe.getComment());
             dto.setInternalTrainerId(trainingGroupe.getInternalTrainerId());
-            dto.setTrainingType(TrainingType.Interne);
+            dto.setTrainingType(TrainingType.INTERNAL);
         }
 
         // Gestion de l'OCF dans le DTO de réponse
@@ -108,11 +108,11 @@ public class TrainingGroupeUtilMethods {
             dto.setExternalTrainerName(trainingGroupe.getTrainer().getName());
             dto.setExternalTrainerEmail(trainingGroupe.getTrainer().getEmail());
             dto.setCost(trainingGroupe.getPrice());
-            dto.setTrainingType(TrainingType.Externe);
+            dto.setTrainingType(TrainingType.EXTERNAL);
         } else {
             dto.setComment(trainingGroupe.getComment());
             dto.setInternalTrainerId(trainingGroupe.getInternalTrainerId());
-            dto.setTrainingType(TrainingType.Interne);
+            dto.setTrainingType(TrainingType.INTERNAL);
         }
 
         // Gestion de l'OCF dans le DTO de réponse

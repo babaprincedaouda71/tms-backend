@@ -4,7 +4,6 @@ import org.example.trainingservice.dto.group.GroupDto;
 import org.example.trainingservice.dto.group.GroupToAddOrEditDto;
 import org.example.trainingservice.dto.ocf.OCFAddOrEditGroupDto;
 import org.example.trainingservice.entity.Groupe;
-import org.example.trainingservice.entity.plan.TrainingGroupe;
 import org.example.trainingservice.enums.TrainingType;
 
 public class GroupUtilMethods {
@@ -32,7 +31,7 @@ public class GroupUtilMethods {
         // Pour l'instant, je le laisse comme ça, tu devras implémenter la logique pour le récupérer
         dto.setTrainingProvider(null); // À implémenter
         // Il faudra convertir le statut de l'entité Groupe vers l'enum GroupeStatusEnums
-        dto.setStatus(groupe.getStatus()); // À implémenter la conversion de statut
+        dto.setStatus(groupe.getStatus().getDescription()); // À implémenter la conversion de statut
         return dto;
     }
 
@@ -60,11 +59,11 @@ public class GroupUtilMethods {
             dto.setExternalTrainerName(groupe.getTrainer().getName());
             dto.setExternalTrainerEmail(groupe.getTrainer().getEmail());
             dto.setCost(groupe.getPrice());
-            dto.setTrainingType(TrainingType.Externe);
+            dto.setTrainingType(TrainingType.EXTERNAL);
         } else {
             dto.setComment(groupe.getComment());
             dto.setInternalTrainerId(groupe.getInternalTrainerId());
-            dto.setTrainingType(TrainingType.Interne);
+            dto.setTrainingType(TrainingType.INTERNAL);
         }
 
         // Gestion de l'OCF dans le DTO de réponse
