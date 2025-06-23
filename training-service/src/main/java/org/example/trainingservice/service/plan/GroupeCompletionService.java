@@ -93,6 +93,9 @@ public class GroupeCompletionService {
     public Groupe updateCompletionStatus(Groupe groupe) {
         boolean isComplete = isGroupeComplete(groupe);
         groupe.setIsAllFieldsFilled(isComplete);
+        if (isComplete) {
+            groupe.setStatus(GroupeStatusEnums.APPROVED);
+        }
         return groupe;
     }
 

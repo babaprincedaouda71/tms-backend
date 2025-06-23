@@ -13,4 +13,6 @@ public class TrainingDetailsForCancelDto {
     private UUID id;
 
     private String theme;
+
+    private String csfPlanifie;
 }

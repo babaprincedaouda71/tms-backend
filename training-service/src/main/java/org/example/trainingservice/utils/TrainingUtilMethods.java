@@ -192,6 +192,7 @@ public class TrainingUtilMethods {
         return TrainingDetailsForCancelDto.builder()
                 .id(training.getId())
                 .theme(training.getTheme())
+                .csfPlanifie(training.getCsfPlanifie())
                 .build();
     }
 }
