@@ -12,4 +12,6 @@ public interface GroupeInvoiceService {
     ResponseEntity<?> getGroupeInvoice(UUID groupeInvoiceId);
 
     ResponseEntity<?> addGroupeInvoice(Long groupId, AddGroupeInvoiceDto invoice, MultipartFile invoiceFile, MultipartFile bankRemiseFile, MultipartFile receiptFile);
+
+    ResponseEntity<?> deleteGroupeInvoice(UUID groupeInvoiceId);
 }

@@ -6,11 +6,13 @@ import org.example.companyservice.dto.*;
 import org.example.companyservice.entity.Company;
 import org.example.companyservice.exceptions.CompanyAlreadyExistsException;
 import org.example.companyservice.repository.CompanyRepository;
+import org.example.companyservice.utils.CompanyUtilMethods;
+import org.example.companyservice.utils.SecurityUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import java.util.Optional;
 
 @Service
 public class CompanyServiceImpl implements CompanyService {
@@ -97,6 +99,16 @@ public class CompanyServiceImpl implements CompanyService {
     @Override
     public ResponseEntity<?> getAllWaiting() {
         return ResponseEntity.ok(companyRepository.findAllByStatus("En_Attente"));
+    }
+
+    @Override
+    public ResponseEntity<?> getCurrentCompany() {
+        Long companyId = SecurityUtils.getCurrentCompanyId();
+        Optional<Company> byId = companyRepository.findById(companyId);
+        if (byId.isPresent()) {
+            return ResponseEntity.ok(CompanyUtilMethods.mapToCurrentCompanyDto(byId.get()));
+        }
+        return ResponseEntity.notFound().build();
     }
 
     /********************************************************/

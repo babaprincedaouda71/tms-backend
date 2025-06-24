@@ -33,6 +33,13 @@ public class UserUtilMethods {
                 .collect(Collectors.toList());
     }
 
+    public static TrainersDto mapToTrainerDto(User user) {
+        return TrainersDto.builder()
+                .id(user.getId())
+                .name(user.getFirstName() + " " + user.getLastName())
+                .build();
+    }
+
     public static MyProfileDto mapToMyProfileDto(User user) {
         MyProfileDto myProfileDto = new MyProfileDto();
         myProfileDto.setId(user.getId());

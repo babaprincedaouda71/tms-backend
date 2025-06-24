@@ -86,6 +86,11 @@ public class UserController {
         return userService.getAllTrainers();
     }
 
+    @GetMapping("/trainers/get/trainerName/{trainerId}")
+    public ResponseEntity<?> getTrainerName(@PathVariable Long trainerId) {
+        return userService.getTrainerName(trainerId);
+    }
+
     @GetMapping("/get/my-profile/{userId}")
     public ResponseEntity<?> getMyProfile(@PathVariable Long userId) {
         log.info("Getting my-profile for user {}", userId);

@@ -110,6 +110,17 @@ public class GroupeInvoiceServiceImpl implements GroupeInvoiceService {
         }
     }
 
+    @Override
+    public ResponseEntity<?> deleteGroupeInvoice(UUID groupeInvoiceId) {
+        log.info("Suppression de la facture pour l'ID {}", groupeInvoiceId);
+        Optional<GroupeInvoice> foundGroupeInvoice = groupeInvoiceRepository.findById(groupeInvoiceId);
+        if (foundGroupeInvoice.isPresent()) {
+            groupeInvoiceRepository.deleteById(groupeInvoiceId);
+            return ResponseEntity.ok().build();
+        }
+        return ResponseEntity.notFound().build();
+    }
+
     /*************************************************************/
     /**
      * Upload un fichier vers MinIO si présent

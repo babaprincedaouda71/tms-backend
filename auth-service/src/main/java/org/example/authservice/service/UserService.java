@@ -33,6 +33,8 @@ public interface UserService {
 
     ResponseEntity<?> getAllTrainers();
 
+    ResponseEntity<?> getTrainerName(Long trainerId);
+
     ResponseEntity<?> getMyProfile(Long userId);
 
     ResponseEntity<?> getApproverById(Long approverId);

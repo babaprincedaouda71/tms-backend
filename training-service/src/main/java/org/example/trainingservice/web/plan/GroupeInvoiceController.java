@@ -42,6 +42,11 @@ public class GroupeInvoiceController {
         return groupeInvoiceService.addGroupeInvoice(groupId, invoice, invoiceFile, bankRemiseFile, receiptFile);
     }
 
+    @DeleteMapping("/delete/groupeInvoice/{groupeInvoiceId}")
+    public ResponseEntity<?> deleteGroupeInvoice(@PathVariable UUID groupeInvoiceId) {
+        return groupeInvoiceService.deleteGroupeInvoice(groupeInvoiceId);
+    }
+
     /**
      * Validation des fichiers PDF
      */

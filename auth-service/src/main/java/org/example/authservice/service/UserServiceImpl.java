@@ -402,6 +402,15 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public ResponseEntity<?> getTrainerName(Long trainerId) {
+        if (trainerId != null) {
+            User trainer = userRepository.findById(trainerId).orElseThrow(() -> new UserNotFoundException("Formateur introuvable", null));
+            return ResponseEntity.ok().body(UserUtilMethods.mapToTrainerDto(trainer));
+        }
+        return ResponseEntity.ok().body(null);
+    }
+
+    @Override
     public ResponseEntity<?> getMyProfile(Long userId) {
         // Récupération de l'utilisateur
         User user = userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException("Utilisateur introuvable", null));

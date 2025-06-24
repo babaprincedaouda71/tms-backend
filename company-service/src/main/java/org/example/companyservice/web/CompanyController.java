@@ -1,6 +1,7 @@
 package org.example.companyservice.web;
 
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.example.companyservice.dto.CompanyDetailsRequest;
 import org.example.companyservice.dto.CompanyResponse;
 import org.example.companyservice.dto.InitialRegistrationRequest;
@@ -9,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/companies")
 public class CompanyController {
@@ -56,5 +58,11 @@ public class CompanyController {
     public ResponseEntity<CompanyResponse> getCompanyById(@PathVariable Long companyId) {
         CompanyResponse companyById = companyService.getCompanyByIdSecure(companyId);
         return ResponseEntity.ok(companyById);
+    }
+
+    @GetMapping("/company/current")
+    public ResponseEntity<?> getCurrentCompany() {
+        log.error("Getting current company");
+        return companyService.getCurrentCompany();
     }
 }

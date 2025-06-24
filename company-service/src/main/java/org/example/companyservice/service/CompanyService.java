@@ -17,4 +17,6 @@ public interface CompanyService {
     ResponseEntity<?> getAll();
 
     ResponseEntity<?> getAllWaiting();
+
+    ResponseEntity<?> getCurrentCompany();
 }
