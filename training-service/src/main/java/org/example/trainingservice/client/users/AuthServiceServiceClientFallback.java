@@ -5,6 +5,7 @@ import org.example.trainingservice.dto.evaluation.Participant;
 import org.example.trainingservice.dto.evaluation.TeamEvaluationDetailsForUserDto;
 import org.example.trainingservice.dto.evaluation.UserDto;
 import org.example.trainingservice.dto.plan.ParticipantForCancel;
+import org.example.trainingservice.dto.plan.ParticipantForPresenceList;
 import org.example.trainingservice.model.Approver;
 
 import java.util.List;
@@ -51,6 +52,12 @@ public class AuthServiceServiceClientFallback implements AuthServiceClient {
     @Override
     public List<ParticipantForCancel> getParticipantsEmail(Set<Long> participantIds) {
         log.error("Error while calling getParticipantsEmail");
+        return List.of();
+    }
+
+    @Override
+    public List<ParticipantForPresenceList> getParticipantsDetails(Set<Long> participantIds) {
+        log.error("Error while calling getParticipantsDetails");
         return List.of();
     }
 }

@@ -1,6 +1,7 @@
 package org.example.trainingservice.web.plan;
 
 import org.example.trainingservice.dto.plan.AddGroupeInvoiceDto;
+import org.example.trainingservice.dto.plan.UpdatePlanStatusRequestDto;
 import org.example.trainingservice.service.plan.GroupeInvoiceService;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -45,6 +46,21 @@ public class GroupeInvoiceController {
     @DeleteMapping("/delete/groupeInvoice/{groupeInvoiceId}")
     public ResponseEntity<?> deleteGroupeInvoice(@PathVariable UUID groupeInvoiceId) {
         return groupeInvoiceService.deleteGroupeInvoice(groupeInvoiceId);
+    }
+
+    @PutMapping("/update-status")
+    public ResponseEntity<?> updateStatus(@RequestBody UpdateGroupeInvoiceStatusDto updateGroupeInvoiceStatusDto) {
+        return groupeInvoiceService.updateStatus(updateGroupeInvoiceStatusDto);
+    }
+
+    @GetMapping("get/groupeInvoiceDetails/{invoiceId}")
+    public ResponseEntity<?> getGroupeInvoiceDetails(@PathVariable UUID invoiceId) {
+        return groupeInvoiceService.getGroupeInvoiceDetails(invoiceId);
+    }
+
+    @GetMapping("get/pdf/{invoiceId}/{fileType}")
+    public ResponseEntity<?> getPdf(@PathVariable UUID invoiceId, @PathVariable String fileType) {
+        return groupeInvoiceService.getPdf(invoiceId, fileType);
     }
 
     /**

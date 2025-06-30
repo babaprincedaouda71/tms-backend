@@ -1,5 +1,6 @@
 package org.example.trainingservice.utils;
 
+import org.example.trainingservice.dto.plan.GetGroupeInvoiceDetailsDto;
 import org.example.trainingservice.dto.plan.GetGroupeInvoicesDto;
 import org.example.trainingservice.entity.plan.GroupeInvoice;
 
@@ -42,9 +43,25 @@ public class GroupeInvoiceUtilMethods {
                 .creationDate(invoice.getCreationDate())
                 .description(invoice.getDescription())
                 .amount(invoice.getAmount())
-                .status(invoice.getStatus())
+                .status(invoice.getStatus().getDescription())
                 .paymentDate(invoice.getPaymentDate())
                 .paymentMethod(invoice.getPaymentMethod())
+                .build();
+    }
+
+    public static GetGroupeInvoiceDetailsDto mapToGetGroupeInvoiceDetailsDto(GroupeInvoice groupeInvoice) {
+        return GetGroupeInvoiceDetailsDto.builder()
+                .id(groupeInvoice.getId())
+                .type(groupeInvoice.getType())
+                .description(groupeInvoice.getDescription())
+                .amount(String.valueOf(groupeInvoice.getAmount()))
+                .paymentDate(String.valueOf(groupeInvoice.getPaymentDate()))
+                .paymentMethod(groupeInvoice.getPaymentMethod())
+                .creationDate(String.valueOf(groupeInvoice.getCreationDate()))
+                .status(groupeInvoice.getStatus().getDescription())
+                .invoiceFile(groupeInvoice.getInvoiceFile())
+                .bankRemiseFile(groupeInvoice.getBankRemiseFile())
+                .receiptFile(groupeInvoice.getReceiptFile())
                 .build();
     }
 }

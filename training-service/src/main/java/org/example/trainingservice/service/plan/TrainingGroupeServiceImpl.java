@@ -9,6 +9,7 @@ import org.example.trainingservice.dto.need.SiteDto;
 import org.example.trainingservice.dto.ocf.OCFAddOrEditGroupDto;
 import org.example.trainingservice.dto.plan.GroupToSendInvitationDto;
 import org.example.trainingservice.dto.plan.ParticipantForCancel;
+import org.example.trainingservice.dto.plan.ParticipantForPresenceList;
 import org.example.trainingservice.dto.plan.SendInvitationDto;
 import org.example.trainingservice.entity.OCF;
 import org.example.trainingservice.entity.TrainerForTrainingGroupe;
@@ -519,6 +520,54 @@ public class TrainingGroupeServiceImpl implements TrainingGroupeService {
 
         } catch (TrainingGroupeNotFoundException e) {
             log.error("Training group not found: {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("Error while filtering participants for group {}: {}", groupId, e.getMessage(), e);
+            return ResponseEntity.ok(Collections.emptyList());
+        }
+    }
+
+    @Override
+    public ResponseEntity<?> getParticipantsForList(Long groupId) {
+        log.info("getParticipantsForList - filtering participants with NOT_SENT invitations");
+        try {
+            // Récupérer le groupe
+            TrainingGroupe trainingGroupe = trainingGroupeRepository.findById(groupId)
+                    .orElseThrow(() -> new TrainingGroupeNotFoundException(
+                            "Training Groupe not found with ID : " + groupId, null));
+
+            // Collecte des participants ids du groupe
+            Set<Long> allParticipantIds = trainingGroupe.getUserGroupIds();
+
+            // Vérification pour s'assurer que ce n'est pas vide
+            if (allParticipantIds == null || allParticipantIds.isEmpty()) {
+                log.info("No participants found in group {}", groupId);
+                return ResponseEntity.ok(Collections.emptyList());
+            }
+
+            // Récupérer directement les IDs des utilisateurs avec des invitations envoyées
+            // (requête optimisée en une seule fois)
+            Set<Long> usersWithSentInvitations = trainingInvitationRepository
+                    .findUserIdsWithSentInvitationsByGroupeId(groupId);
+
+            // Filtrer les participants : garder seulement ceux qui n'ont pas d'invitation envoyée
+            Set<Long> participantsWithoutSentInvitations = allParticipantIds.stream()
+                    .filter(participantId -> !usersWithSentInvitations.contains(participantId))
+                    .collect(Collectors.toSet());
+
+            if (participantsWithoutSentInvitations.isEmpty()) {
+                return ResponseEntity.ok(Collections.emptyList());
+            }
+
+            // Récupération des infos des users qui n'ont pas encore reçu d'invitation
+            List<ParticipantForPresenceList> filteredParticipants = authServiceClient
+                    .getParticipantsDetails(participantsWithoutSentInvitations);
+
+
+            return ResponseEntity.ok(filteredParticipants);
+
+        } catch (TrainingGroupeNotFoundException e) {
+            log.error("Training group not founde: {}", e.getMessage());
             throw e;
         } catch (Exception e) {
             log.error("Error while filtering participants for group {}: {}", groupId, e.getMessage(), e);

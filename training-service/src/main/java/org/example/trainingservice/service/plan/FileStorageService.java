@@ -95,6 +95,6 @@ public class FileStorageService {
         if (originalFilename != null && originalFilename.contains(".")) {
             extension = originalFilename.substring(originalFilename.lastIndexOf("."));
         }
-        return UUID.randomUUID().toString() + extension;
+        return originalFilename+" - "+UUID.randomUUID().toString() + extension;
     }
 }

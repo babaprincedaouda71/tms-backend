@@ -4,11 +4,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.trainingservice.dto.plan.AddGroupeInvoiceDto;
 import org.example.trainingservice.entity.plan.GroupeInvoice;
 import org.example.trainingservice.entity.plan.TrainingGroupe;
+import org.example.trainingservice.enums.GroupeInvoiceStatusEnums;
 import org.example.trainingservice.exceptions.TrainingGroupeNotFoundException;
 import org.example.trainingservice.repository.plan.GroupeInvoiceRepository;
 import org.example.trainingservice.repository.plan.TrainingGroupeRepository;
 import org.example.trainingservice.utils.GroupeInvoiceUtilMethods;
 import org.example.trainingservice.utils.SecurityUtils;
+import org.example.trainingservice.web.plan.UpdateGroupeInvoiceStatusDto;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -84,7 +86,7 @@ public class GroupeInvoiceServiceImpl implements GroupeInvoiceService {
                     .creationDate(LocalDate.now())
                     .description(createDto.getDescription())
                     .amount(createDto.getAmount())
-                    .status("Non Reglée")
+                    .status(GroupeInvoiceStatusEnums.NOT_PAID)
                     .paymentDate(createDto.getPaymentDate() != null ? createDto.getPaymentDate() : LocalDate.now())
                     .paymentMethod(createDto.getPaymentMethod())
                     .invoiceFile(invoiceFileName)
@@ -121,6 +123,79 @@ public class GroupeInvoiceServiceImpl implements GroupeInvoiceService {
         return ResponseEntity.notFound().build();
     }
 
+
+    @Override
+    public ResponseEntity<?> updateStatus(UpdateGroupeInvoiceStatusDto updateGroupeInvoiceStatusDto) {
+        log.info("Tentative de mise à jour du statut de la facture de groupe.");
+
+        UUID groupeInvoiceId = updateGroupeInvoiceStatusDto.getId();
+        String statusString = updateGroupeInvoiceStatusDto.getStatus();
+
+        // Vérification que les données d'entrée ne sont pas nulles ou vides
+        if (groupeInvoiceId == null || statusString == null || statusString.trim().isEmpty()) {
+            log.warn("ID de facture ou statut manquant dans la requête.");
+            return ResponseEntity.badRequest().body("L'ID de la facture et le statut sont requis.");
+        }
+
+        // Recherche de la facture dans le dépôt
+        Optional<GroupeInvoice> foundGroupeInvoiceOpt = groupeInvoiceRepository.findById(groupeInvoiceId);
+
+        if (foundGroupeInvoiceOpt.isEmpty()) {
+            log.warn("Aucune facture de groupe trouvée avec l'ID : {}", groupeInvoiceId);
+            return ResponseEntity.notFound().build();
+        }
+
+        try {
+            // Conversion de la chaîne de caractères du statut en énumération via la description
+            GroupeInvoiceStatusEnums newStatus = GroupeInvoiceStatusEnums.fromDescription(statusString);
+
+            GroupeInvoice groupeInvoice = foundGroupeInvoiceOpt.get();
+            groupeInvoice.setStatus(newStatus);
+
+            // Si le statut est "Réglée", on peut aussi mettre à jour la date de paiement
+            if (newStatus == GroupeInvoiceStatusEnums.PAID) {
+                groupeInvoice.setPaymentDate(java.time.LocalDate.now());
+            }
+
+            groupeInvoiceRepository.save(groupeInvoice);
+
+            log.info("Le statut de la facture de groupe {} a été mis à jour avec succès à '{}'", groupeInvoiceId, newStatus);
+            return ResponseEntity.ok().body("Statut mis à jour avec succès.");
+
+        } catch (IllegalArgumentException e) {
+            // Ce bloc est exécuté si fromDescription lève une exception (statut invalide)
+            log.error("Statut invalide fourni : '{}'", statusString, e);
+            return ResponseEntity.badRequest().body("Le statut fourni n'est pas valide : " + statusString);
+        }
+    }
+
+    @Override
+    public ResponseEntity<?> getGroupeInvoiceDetails(UUID invoiceId) {
+        log.info("Get details for invoice {}", invoiceId);
+        Optional<GroupeInvoice> foundGroupeInvoice = groupeInvoiceRepository.findById(invoiceId);
+        if (foundGroupeInvoice.isPresent()) {
+            GroupeInvoice groupeInvoice = foundGroupeInvoice.get();
+            return ResponseEntity.ok(GroupeInvoiceUtilMethods.mapToGetGroupeInvoiceDetailsDto(groupeInvoice));
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    @Override
+    public ResponseEntity<?> getPdf(UUID invoiceId, String fileType) {
+        log.info("Get PDF for invoice {}", invoiceId);
+        Optional<GroupeInvoice> foundGroupeInvoice = groupeInvoiceRepository.findById(invoiceId);
+        if (foundGroupeInvoice.isPresent()) {
+            GroupeInvoice groupeInvoice = foundGroupeInvoice.get();
+            String fileNameByType = getFileNameByType(groupeInvoice, fileType);
+
+            byte[] bytes = fileStorageService.downloadFile(fileNameByType);
+
+            return ResponseEntity.ok(bytes);
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+
     /*************************************************************/
     /**
      * Upload un fichier vers MinIO si présent
@@ -153,7 +228,7 @@ public class GroupeInvoiceServiceImpl implements GroupeInvoiceService {
     private String getFileNameByType(GroupeInvoice invoice, String fileType) {
         return switch (fileType.toLowerCase()) {
             case "invoice", "facture" -> invoice.getInvoiceFile();
-            case "bank-remise", "remise" -> invoice.getBankRemiseFile();
+            case "bankremise", "remise" -> invoice.getBankRemiseFile();
             case "receipt", "recu" -> invoice.getReceiptFile();
             default -> null;
         };

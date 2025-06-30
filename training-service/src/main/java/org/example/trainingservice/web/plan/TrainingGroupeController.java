@@ -9,6 +9,8 @@ import org.example.trainingservice.service.plan.TrainingGroupeService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
@@ -73,6 +75,11 @@ public class TrainingGroupeController {
     @GetMapping("/get/getParticipants/{groupId}")
     public ResponseEntity<?> getParticipantsForTrainingInvitation(@PathVariable Long groupId) {
         return trainingGroupeService.getParticipantsForTrainingInvitation(groupId);
+    }
+
+    @GetMapping("/get/getParticipantsForList/{groupId}")
+    public ResponseEntity<?> getParticipantsForList(@PathVariable Long groupId) {
+        return trainingGroupeService.getParticipantsForList(groupId);
     }
 
     @GetMapping("/get/getGroupDetailsForSendInvitationToTrainer/{groupId}")

@@ -4,6 +4,7 @@ import org.example.trainingservice.dto.evaluation.Participant;
 import org.example.trainingservice.dto.evaluation.TeamEvaluationDetailsForUserDto;
 import org.example.trainingservice.dto.evaluation.UserDto;
 import org.example.trainingservice.dto.plan.ParticipantForCancel;
+import org.example.trainingservice.dto.plan.ParticipantForPresenceList;
 import org.example.trainingservice.model.Approver;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,4 +37,7 @@ public interface AuthServiceClient {
 
     @PostMapping("/api/users/get/participants-emails")
     List<ParticipantForCancel> getParticipantsEmail(@RequestBody Set<Long> participantIds);
+
+    @PostMapping("/api/users/get/participants-details")
+    List<ParticipantForPresenceList> getParticipantsDetails(@RequestBody Set<Long> participantIds);
 }

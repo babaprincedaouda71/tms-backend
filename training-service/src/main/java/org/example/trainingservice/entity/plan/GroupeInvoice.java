@@ -3,6 +3,7 @@ package org.example.trainingservice.entity.plan;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.*;
+import org.example.trainingservice.enums.GroupeInvoiceStatusEnums;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -30,7 +31,8 @@ public class GroupeInvoice {
     @Column(name = "Montant")
     private BigDecimal amount;
     @Column(name = "Statut")
-    private String status;
+    @Enumerated(EnumType.STRING)
+    private GroupeInvoiceStatusEnums status;
     @Column(name = "Date de paiement")
     private LocalDate paymentDate;
     @Column(name = "Moyen de paiement")
