@@ -36,4 +36,16 @@ public interface QuestionnaireRepository extends JpaRepository<Questionnaire, UU
     @Modifying
     @Query("UPDATE Questionnaire q SET q.defaultQuestionnaire = false WHERE q.companyId = :companyId AND q.defaultQuestionnaire = true")
     void unsetDefaultForCompany(Long companyId);
+
+    // 🆕 NOUVELLE MÉTHODE pour charger avec les questions
+    /**
+     * Trouve un questionnaire par son ID et companyId en chargeant également ses questions.
+     * Utilise LEFT JOIN FETCH pour éviter les requêtes N+1.
+     *
+     * @param companyId L'ID de l'entreprise
+     * @param id L'UUID du questionnaire
+     * @return Un Optional contenant le questionnaire avec ses questions chargées
+     */
+    @Query("SELECT q FROM Questionnaire q LEFT JOIN FETCH q.questions WHERE q.companyId = :companyId AND q.id = :id")
+    Optional<Questionnaire> findByCompanyIdAndIdWithQuestions(Long companyId, UUID id);
 }

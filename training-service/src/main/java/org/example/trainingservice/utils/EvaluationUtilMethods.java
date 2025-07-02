@@ -114,6 +114,7 @@ public class EvaluationUtilMethods {
                 .description(questionnaire.getDescription())
                 .creationDate(questionnaire.getCreationDate())
                 .questions(questionDtos)
+                .isDefault(questionnaire.getDefaultQuestionnaire()) // 🆕 AJOUTÉ
                 .build();
     }
 

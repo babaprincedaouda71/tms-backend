@@ -137,4 +137,9 @@ public class UserController {
     public ResponseEntity<?> getParticipantsEmails(@RequestBody Set<Long> participantIds) {
         return userService.getParticipantsEmails(participantIds);
     }
+
+    @PostMapping("/get/participants-details")
+    public ResponseEntity<?> getParticipantsDetails(@RequestBody Set<Long> participantIds) {
+        return userService.getParticipantsDetails(participantIds);
+    }
 }

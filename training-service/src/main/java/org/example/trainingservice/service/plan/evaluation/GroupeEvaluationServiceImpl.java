@@ -94,6 +94,7 @@ public class GroupeEvaluationServiceImpl implements GroupeEvaluationService {
                     .creationDate(LocalDate.now())
                     .trainingId(trainingId)
                     .questionnaire(questionnaire)
+                    .participantIds(addGroupeEvaluationDto.getParticipantIds())
                     .status(GroupeEvaluationStatusEnums.DRAFT)
                     .build();
 

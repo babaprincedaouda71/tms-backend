@@ -8,15 +8,21 @@ import org.example.trainingservice.entity.campaign.CampaignEvaluation;
 import org.example.trainingservice.entity.campaign.Question;
 import org.example.trainingservice.entity.campaign.Questionnaire;
 import org.example.trainingservice.entity.campaign.UserResponse;
+import org.example.trainingservice.entity.plan.evaluation.GroupeEvaluation;
+import org.example.trainingservice.enums.EvaluationSource;
+import org.example.trainingservice.enums.GroupeEvaluationStatusEnums;
 import org.example.trainingservice.enums.NeedSource;
 import org.example.trainingservice.enums.NeedStatusEnums;
+import org.example.trainingservice.helper.plan.evaluation.EvaluationContext;
 import org.example.trainingservice.repository.NeedRepository;
 import org.example.trainingservice.repository.evaluation.CampaignEvaluationRepository;
 import org.example.trainingservice.repository.evaluation.QuestionRepository;
 import org.example.trainingservice.repository.evaluation.QuestionnaireRepository;
 import org.example.trainingservice.repository.evaluation.UserResponseRepository;
+import org.example.trainingservice.repository.plan.evaluation.GroupeEvaluationRepo;
 import org.example.trainingservice.utils.EvaluationUtilMethods;
 import org.example.trainingservice.utils.SecurityUtils;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -27,6 +33,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -37,204 +44,324 @@ public class MyEvaluationsServiceImpl implements MyEvaluationsService {
     private final QuestionRepository questionRepository;
     private final AuthServiceClient authServiceClient;
     private final NeedRepository needRepository;
+    private final GroupeEvaluationRepo groupeEvaluationRepo;
 
-    public MyEvaluationsServiceImpl(QuestionnaireRepository questionnaireRepository, CampaignEvaluationRepository campaignEvaluationRepository, UserResponseRepository userResponseRepository, QuestionRepository questionRepository, AuthServiceClient authServiceClient, NeedRepository needRepository) {
+    public MyEvaluationsServiceImpl(QuestionnaireRepository questionnaireRepository, CampaignEvaluationRepository campaignEvaluationRepository, UserResponseRepository userResponseRepository, QuestionRepository questionRepository, AuthServiceClient authServiceClient, NeedRepository needRepository, GroupeEvaluationRepo groupeEvaluationRepo) {
         this.questionnaireRepository = questionnaireRepository;
         this.campaignEvaluationRepository = campaignEvaluationRepository;
         this.userResponseRepository = userResponseRepository;
         this.questionRepository = questionRepository;
         this.authServiceClient = authServiceClient;
         this.needRepository = needRepository;
+        this.groupeEvaluationRepo = groupeEvaluationRepo;
     }
+
+//    @Override
+//    public ResponseEntity<?> getMyEvaluations(Long userId) {
+//        // liste des campagnes auxquelles appartient l'utilisateur
+//        log.info("Fetching campaign evaluations for user with ID {}.", userId);
+//        List<CampaignEvaluation> campaignEvaluations = campaignEvaluationRepository.findByParticipantIdsContainsAndStatus(userId, "Publiée");
+//
+//        // liste des questionnaires associés aux campagnes
+//        log.info("Fetching questionnaires for campaign evaluations.");
+//        List<Questionnaire> questionnaires = new ArrayList<>();
+//        campaignEvaluations.forEach(campaignEvaluation -> {
+//            questionnaires.addAll(campaignEvaluation.getQuestionnaires());
+//        });
+//
+//        // Liste des evaluations du user
+//        log.info("Fetching evaluations for user with ID {}.", userId);
+//        List<MyEvaluationsDto> myEvaluationsDtos = new ArrayList<>();
+//
+//        questionnaires.forEach(questionnaire -> {
+//            // Récupérer toutes les réponses de l'utilisateur pour ce questionnaire
+//            List<UserResponse> userResponsesForQuestionnaireAndUser =
+//                    userResponseRepository.findByUserIdAndQuestionnaireId(userId, questionnaire.getId());
+//
+//            // Récupérer le nombre total de questions du questionnaire
+//            int totalQuestions = questionnaire.getQuestions().size();
+//            int numberOfValidResponses = 0;
+//
+//            // Compter le nombre de réponses valides
+//            for (UserResponse userResponse : userResponsesForQuestionnaireAndUser) {
+//                switch (userResponse.getResponseType()) {
+//                    case "Score":
+//                        if (userResponse.getScoreResponse() != null) {
+//                            numberOfValidResponses++;
+//                        }
+//                        break;
+//                    case "Notation":
+//                        if (userResponse.getRatingResponse() != null) {
+//                            numberOfValidResponses++;
+//                        }
+//                        break;
+//                    case "Texte":
+//                        if (userResponse.getTextResponse() != null) {
+//                            numberOfValidResponses++;
+//                        }
+//                        break;
+//                    case "Commentaire":
+//                        if (userResponse.getCommentResponse() != null) {
+//                            numberOfValidResponses++;
+//                        }
+//                        break;
+//                    case "Réponse multiple":
+//                        if (userResponse.getMultipleChoiceResponse() != null && !userResponse.getMultipleChoiceResponse().isEmpty()) {
+//                            numberOfValidResponses++;
+//                        }
+//                        break;
+//                    case "Réponse unique":
+//                        if (userResponse.getSingleChoiceResponse() != null) {
+//                            numberOfValidResponses++;
+//                        }
+//                        break;
+//                    case "Evaluation":
+//                        if (userResponse.getSingleLevelChoiceResponse() != null) {
+//                            numberOfValidResponses++;
+//                        }
+//                        // Nous traiterons ce cas plus tard
+//                        break;
+//                    default:
+//                        log.warn("Type de réponse non géré : {}", userResponse.getResponseType());
+//                        break;
+//                }
+//            }
+//
+//            // Calculer la progression
+//            int progression = 0;
+//            if (totalQuestions > 0) {
+//                progression = (numberOfValidResponses * 100) / totalQuestions;
+//            }
+//
+//            log.error("Progression: {}.", progression);
+//
+//            // Déterminer le statut
+//            String status = "En attente";
+//            LocalDate startDate = null;
+//            if (progression > 0 && progression < 100) {
+//                status = "En cours";
+//                // On prend la date de la première réponse (valide ou non) comme date de début
+//                if (!userResponsesForQuestionnaireAndUser.isEmpty()) {
+//                    startDate = userResponsesForQuestionnaireAndUser.get(0).getStartDate();
+//                }
+//            } else if (progression == 100) {
+//                status = "Terminée";
+//                log.error("Status {}.", status);
+//                if (!userResponsesForQuestionnaireAndUser.isEmpty()) {
+//                    startDate = userResponsesForQuestionnaireAndUser.get(0).getStartDate();
+//                }
+//            }
+//
+//            // Nouvelle liste de questions pour chaque questionnaire
+//            List<QuestionDto> questionDtos = new ArrayList<>();
+//            questionnaire.getQuestions().forEach(question -> {
+//                questionDtos.add(EvaluationUtilMethods.mapToQuestionDto(question));
+//            });
+//
+//            MyEvaluationsDto myEvaluationsDto = MyEvaluationsDto.builder()
+//                    .id(questionnaire.getId())
+//                    .title(questionnaire.getTitle())
+//                    .type(questionnaire.getType())
+//                    .progress(progression)
+//                    .status(status)
+//                    .questions(questionDtos)
+//                    .startDate(startDate != null ? startDate.toString() : "Pas encore")
+//                    .build();
+//
+//            myEvaluationsDtos.add(myEvaluationsDto);
+//        });
+//        log.info("Returning {} evaluations for user with ID {}.", myEvaluationsDtos.size(), userId);
+//        return ResponseEntity.ok().body(myEvaluationsDtos);
+//    }
 
     @Override
     public ResponseEntity<?> getMyEvaluations(Long userId) {
-        // liste des campagnes auxquelles appartient l'utilisateur
-        log.info("Fetching campaign evaluations for user with ID {}.", userId);
-        List<CampaignEvaluation> campaignEvaluations = campaignEvaluationRepository.findByParticipantIdsContainsAndStatus(userId, "Publiée");
+        log.info("Fetching all evaluations (campaigns + groupe evaluations) for user with ID {}.", userId);
 
-        // liste des questionnaires associés aux campagnes
-        log.info("Fetching questionnaires for campaign evaluations.");
+        List<MyEvaluationsDto> myEvaluationsDtos = new ArrayList<>();
+
+        // 1. RÉCUPÉRER LES ÉVALUATIONS DES CAMPAGNES (logique existante)
+        List<MyEvaluationsDto> campaignEvaluations = getCampaignEvaluations(userId);
+        myEvaluationsDtos.addAll(campaignEvaluations);
+
+        // 2. RÉCUPÉRER LES ÉVALUATIONS DES GROUPES (nouvelle logique)
+        List<MyEvaluationsDto> groupeEvaluations = getGroupeEvaluations(userId);
+        myEvaluationsDtos.addAll(groupeEvaluations);
+
+        log.info("Returning {} total evaluations for user with ID {}.", myEvaluationsDtos.size(), userId);
+        return ResponseEntity.ok().body(myEvaluationsDtos);
+    }
+
+    // MÉTHODE PRIVÉE pour les évaluations de campagne (logique existante refactorisée)
+    private List<MyEvaluationsDto> getCampaignEvaluations(Long userId) {
+        List<MyEvaluationsDto> campaignEvaluationDtos = new ArrayList<>();
+
+        // Récupérer les campagnes auxquelles l'utilisateur participe
+        List<CampaignEvaluation> campaignEvaluations = campaignEvaluationRepository
+                .findByParticipantIdsContainsAndStatus(userId, "Publiée");
+
+        // Récupérer tous les questionnaires des campagnes
         List<Questionnaire> questionnaires = new ArrayList<>();
         campaignEvaluations.forEach(campaignEvaluation -> {
             questionnaires.addAll(campaignEvaluation.getQuestionnaires());
         });
 
-        // Liste des evaluations du user
-        log.info("Fetching evaluations for user with ID {}.", userId);
-        List<MyEvaluationsDto> myEvaluationsDtos = new ArrayList<>();
-
+        // Traiter chaque questionnaire
         questionnaires.forEach(questionnaire -> {
-            // Récupérer toutes les réponses de l'utilisateur pour ce questionnaire
-            List<UserResponse> userResponsesForQuestionnaireAndUser =
-                    userResponseRepository.findByUserIdAndQuestionnaireId(userId, questionnaire.getId());
-
-            // Récupérer le nombre total de questions du questionnaire
-            int totalQuestions = questionnaire.getQuestions().size();
-            int numberOfValidResponses = 0;
-
-            // Compter le nombre de réponses valides
-            for (UserResponse userResponse : userResponsesForQuestionnaireAndUser) {
-                switch (userResponse.getResponseType()) {
-                    case "Score":
-                        if (userResponse.getScoreResponse() != null) {
-                            numberOfValidResponses++;
-                        }
-                        break;
-                    case "Notation":
-                        if (userResponse.getRatingResponse() != null) {
-                            numberOfValidResponses++;
-                        }
-                        break;
-                    case "Texte":
-                        if (userResponse.getTextResponse() != null) {
-                            numberOfValidResponses++;
-                        }
-                        break;
-                    case "Commentaire":
-                        if (userResponse.getCommentResponse() != null) {
-                            numberOfValidResponses++;
-                        }
-                        break;
-                    case "Réponse multiple":
-                        if (userResponse.getMultipleChoiceResponse() != null && !userResponse.getMultipleChoiceResponse().isEmpty()) {
-                            numberOfValidResponses++;
-                        }
-                        break;
-                    case "Réponse unique":
-                        if (userResponse.getSingleChoiceResponse() != null) {
-                            numberOfValidResponses++;
-                        }
-                        break;
-                    case "Evaluation":
-                        if (userResponse.getSingleLevelChoiceResponse() != null) {
-                            numberOfValidResponses++;
-                        }
-                        // Nous traiterons ce cas plus tard
-                        break;
-                    default:
-                        log.warn("Type de réponse non géré : {}", userResponse.getResponseType());
-                        break;
-                }
+            MyEvaluationsDto dto = processQuestionnaireForUser(userId, questionnaire, EvaluationSource.CAMPAIGN);
+            if (dto != null) {
+                dto.setCategory("Campagne"); // Identifier la source
+                campaignEvaluationDtos.add(dto);
             }
-
-            // Calculer la progression
-            int progression = 0;
-            if (totalQuestions > 0) {
-                progression = (numberOfValidResponses * 100) / totalQuestions;
-            }
-
-            log.error("Progression: {}.", progression);
-
-            // Déterminer le statut
-            String status = "En attente";
-            LocalDate startDate = null;
-            if (progression > 0 && progression < 100) {
-                status = "En cours";
-                // On prend la date de la première réponse (valide ou non) comme date de début
-                if (!userResponsesForQuestionnaireAndUser.isEmpty()) {
-                    startDate = userResponsesForQuestionnaireAndUser.get(0).getStartDate();
-                }
-            } else if (progression == 100) {
-                status = "Terminée";
-                log.error("Status {}.", status);
-                if (!userResponsesForQuestionnaireAndUser.isEmpty()) {
-                    startDate = userResponsesForQuestionnaireAndUser.get(0).getStartDate();
-                }
-            }
-
-            // Nouvelle liste de questions pour chaque questionnaire
-            List<QuestionDto> questionDtos = new ArrayList<>();
-            questionnaire.getQuestions().forEach(question -> {
-                questionDtos.add(EvaluationUtilMethods.mapToQuestionDto(question));
-            });
-
-            MyEvaluationsDto myEvaluationsDto = MyEvaluationsDto.builder()
-                    .id(questionnaire.getId())
-                    .title(questionnaire.getTitle())
-                    .type(questionnaire.getType())
-                    .progress(progression)
-                    .status(status)
-                    .questions(questionDtos)
-                    .startDate(startDate != null ? startDate.toString() : "Pas encore")
-                    .build();
-
-            myEvaluationsDtos.add(myEvaluationsDto);
         });
-        log.info("Returning {} evaluations for user with ID {}.", myEvaluationsDtos.size(), userId);
-        return ResponseEntity.ok().body(myEvaluationsDtos);
+
+        return campaignEvaluationDtos;
+    }
+
+    // NOUVELLE MÉTHODE pour les évaluations de groupe
+    private List<MyEvaluationsDto> getGroupeEvaluations(Long userId) {
+        List<MyEvaluationsDto> groupeEvaluationDtos = new ArrayList<>();
+
+        // Récupérer toutes les GroupeEvaluation où l'utilisateur est participant
+        List<GroupeEvaluation> groupeEvaluations = groupeEvaluationRepo.findAll().stream()
+                .filter(ge -> ge.getParticipantIds() != null && ge.getParticipantIds().contains(userId))
+                .filter(ge -> ge.getStatus() == GroupeEvaluationStatusEnums.PUBLISHED) // Seulement les publiées
+                .toList();
+
+        // Traiter chaque GroupeEvaluation
+        groupeEvaluations.forEach(groupeEvaluation -> {
+            Questionnaire questionnaire = groupeEvaluation.getQuestionnaire();
+            if (questionnaire != null) {
+                MyEvaluationsDto dto = processQuestionnaireForUser(userId, questionnaire, EvaluationSource.GROUPE_EVALUATION);
+                if (dto != null) {
+                    dto.setCategory("Formation"); // Identifier la source
+                    // Peut-être ajouter des infos spécifiques au groupe
+                    dto.setTitle(groupeEvaluation.getLabel() + " - " + questionnaire.getTitle());
+                    groupeEvaluationDtos.add(dto);
+                }
+            }
+        });
+
+        return groupeEvaluationDtos;
+    }
+
+    // MÉTHODE UTILITAIRE pour traiter un questionnaire pour un utilisateur
+    private MyEvaluationsDto processQuestionnaireForUser(Long userId, Questionnaire questionnaire, EvaluationSource source) {
+        // Récupérer les réponses selon la source
+        List<UserResponse> userResponses = userResponseRepository
+                .findByUserIdAndQuestionnaireIdAndEvaluationSource(userId, questionnaire.getId(), source);
+
+        // Calculer la progression et le statut (logique existante)
+        int totalQuestions = questionnaire.getQuestions().size();
+        int numberOfValidResponses = calculateValidResponses(userResponses);
+
+        int progression = totalQuestions > 0 ? (numberOfValidResponses * 100) / totalQuestions : 0;
+
+        String status = "En attente";
+        LocalDate startDate = null;
+        if (progression > 0 && progression < 100) {
+            status = "En cours";
+            if (!userResponses.isEmpty()) {
+                startDate = userResponses.get(0).getStartDate();
+            }
+        } else if (progression == 100) {
+            status = "Terminée";
+            if (!userResponses.isEmpty()) {
+                startDate = userResponses.get(0).getStartDate();
+            }
+        }
+
+        // Créer la liste des questions
+        List<QuestionDto> questionDtos = new ArrayList<>();
+        questionnaire.getQuestions().forEach(question -> {
+            questionDtos.add(EvaluationUtilMethods.mapToQuestionDto(question));
+        });
+
+        return MyEvaluationsDto.builder()
+                .id(questionnaire.getId())
+                .title(questionnaire.getTitle())
+                .type(questionnaire.getType())
+                .progress(progression)
+                .status(status)
+                .questions(questionDtos)
+                .startDate(startDate != null ? startDate.toString() : "Pas encore")
+                .build();
+    }
+
+    // MÉTHODE UTILITAIRE pour calculer les réponses valides (logique existante extraite)
+    private int calculateValidResponses(List<UserResponse> userResponses) {
+        int numberOfValidResponses = 0;
+
+        for (UserResponse userResponse : userResponses) {
+            switch (userResponse.getResponseType()) {
+                case "Score":
+                    if (userResponse.getScoreResponse() != null) numberOfValidResponses++;
+                    break;
+                case "Notation":
+                    if (userResponse.getRatingResponse() != null) numberOfValidResponses++;
+                    break;
+                case "Texte":
+                    if (userResponse.getTextResponse() != null) numberOfValidResponses++;
+                    break;
+                case "Commentaire":
+                    if (userResponse.getCommentResponse() != null) numberOfValidResponses++;
+                    break;
+                case "Réponse multiple":
+                    if (userResponse.getMultipleChoiceResponse() != null && !userResponse.getMultipleChoiceResponse().isEmpty()) {
+                        numberOfValidResponses++;
+                    }
+                    break;
+                case "Réponse unique":
+                    if (userResponse.getSingleChoiceResponse() != null) numberOfValidResponses++;
+                    break;
+                case "Evaluation":
+                    if (userResponse.getSingleLevelChoiceResponse() != null) numberOfValidResponses++;
+                    break;
+                default:
+                    log.warn("Type de réponse non géré : {}", userResponse.getResponseType());
+                    break;
+            }
+        }
+
+        return numberOfValidResponses;
     }
 
     @Override
     public ResponseEntity<?> addUserResponse(UUID questionnaireId, List<AddUserResponseDto> addUserResponseDtos) {
-        Questionnaire questionnaire = questionnaireRepository.findById(questionnaireId).orElseThrow(RuntimeException::new);
+        Questionnaire questionnaire = questionnaireRepository.findById(questionnaireId)
+                .orElseThrow(() -> new RuntimeException("Questionnaire non trouvé"));
+
+        // ÉTAPE CRITIQUE : Déterminer la source ET l'ID de l'évaluation
+        EvaluationContext evaluationContext = determineEvaluationContext(questionnaireId, addUserResponseDtos.get(0).getUserId());
+
         List<UserResponse> responsesToSave = new ArrayList<>();
         int numberOfQuestions = questionnaire.getQuestions().size();
         int numberOfValidResponses = 0;
 
-        log.error("Questionnaire {} : {} questions.", questionnaireId, numberOfQuestions);
-        log.error("Add User Responses Dtos : {}.", addUserResponseDtos.size());
+        log.info("Processing responses for questionnaire {} with source {} and context {}",
+                questionnaireId, evaluationContext.getSource(), evaluationContext.getEvaluationId());
 
         for (AddUserResponseDto addUserResponseDto : addUserResponseDtos) {
-            boolean hasValidResponse = false;
-            switch (addUserResponseDto.getResponseType()) {
-                case "Score":
-                    if (addUserResponseDto.getScoreResponse() != null) {
-                        hasValidResponse = true;
-                    }
-                    break;
-                case "Notation":
-                    if (addUserResponseDto.getRatingResponse() != null) {
-                        hasValidResponse = true;
-                    }
-                    break;
-                case "Texte":
-                    if (addUserResponseDto.getTextResponse() != null) {
-                        hasValidResponse = true;
-                    }
-                    break;
-                case "Commentaire":
-                    if (addUserResponseDto.getCommentResponse() != null) {
-                        hasValidResponse = true;
-                    }
-                    break;
-                case "Réponse multiple":
-                    if (addUserResponseDto.getMultipleChoiceResponse() != null && !addUserResponseDto.getMultipleChoiceResponse().isEmpty()) {
-                        hasValidResponse = true;
-                    }
-                    break;
-                case "Réponse unique":
-                    if (addUserResponseDto.getSingleChoiceResponse() != null) {
-                        hasValidResponse = true;
-                    }
-                    break;
-                case "Evaluation":
-                    // Nous traiterons ce cas plus tard
-                    break;
-                default:
-                    break;
-            }
-
+            boolean hasValidResponse = validateResponse(addUserResponseDto);
             if (hasValidResponse) {
                 numberOfValidResponses++;
             }
 
-
-            // Vérifier si une réponse existe déjà pour cet utilisateur, ce questionnaire et cette question
-            UserResponse existingResponse = userResponseRepository.findByUserIdAndQuestionnaireIdAndQuestionId(
-                    addUserResponseDto.getUserId(), questionnaireId, addUserResponseDto.getQuestionId()
-            ).orElse(null);
+            // Vérifier si une réponse existe déjà
+            UserResponse existingResponse = findExistingUserResponse(
+                    addUserResponseDto.getUserId(),
+                    questionnaireId,
+                    addUserResponseDto.getQuestionId(),
+                    evaluationContext);
 
             int progression = (numberOfQuestions > 0) ? (numberOfValidResponses * 100) / numberOfQuestions : 0;
 
             UserResponse.UserResponseBuilder builder;
             if (existingResponse != null) {
-                // Si une réponse existe, on la met à jour
                 builder = existingResponse.toBuilder()
-                        .lastModifiedDate(LocalDate.now()) // Mettre à jour la date de modification
+                        .lastModifiedDate(LocalDate.now())
                         .progression(progression);
             } else {
-                // Si aucune réponse n'existe, on en crée une nouvelle
                 builder = UserResponse.builder()
                         .userId(addUserResponseDto.getUserId())
                         .isSentToManager(false)
@@ -244,50 +371,114 @@ public class MyEvaluationsServiceImpl implements MyEvaluationsService {
                         .questionId(addUserResponseDto.getQuestionId())
                         .startDate(LocalDate.now())
                         .progression(progression)
-                        .responseType(addUserResponseDto.getResponseType());
+                        .responseType(addUserResponseDto.getResponseType())
+                        .evaluationSource(evaluationContext.getSource()); // CRITIQUE
+
+                // CRITIQUE : Définir les IDs selon la source
+                if (evaluationContext.getSource() == EvaluationSource.CAMPAIGN) {
+                    builder.campaignEvaluationId(evaluationContext.getEvaluationId());
+                } else {
+                    builder.groupeEvaluationId(evaluationContext.getEvaluationId());
+                }
             }
 
-            switch (addUserResponseDto.getResponseType()) {
-                case "Score":
-                    builder.scoreResponse(addUserResponseDto.getScoreResponse());
-                    break;
-                case "Notation":
-                    builder.ratingResponse(addUserResponseDto.getRatingResponse());
-                    break;
-                case "Texte":
-                    builder.textResponse(addUserResponseDto.getTextResponse());
-                    break;
-                case "Commentaire":
-                    builder.commentResponse(addUserResponseDto.getCommentResponse());
-                    break;
-                case "Réponse multiple":
-                    builder.multipleChoiceResponse(addUserResponseDto.getMultipleChoiceResponse());
-                    break;
-                case "Réponse unique":
-                    builder.singleChoiceResponse(addUserResponseDto.getSingleChoiceResponse());
-                    break;
-                case "Evaluation":
+            // Définir les valeurs de réponse selon le type
+            setResponseValues(builder, addUserResponseDto);
 
-                    // Ici, nous ajouterons la logique pour l'évaluation plus tard
-                    break;
-                default:
-                    break;
-            }
-
+            // Définir le statut
             if (progression == 100) {
                 builder.status("Terminée");
             } else if (progression < 100 && progression > 0) {
                 builder.status("En cours");
             } else {
-                builder.status(existingResponse != null ? existingResponse.getStatus() : null); // Conserver l'ancien statut si existant
+                builder.status(existingResponse != null ? existingResponse.getStatus() : "En attente");
             }
 
             responsesToSave.add(builder.build());
         }
 
         userResponseRepository.saveAll(responsesToSave);
+        log.info("Saved {} responses for evaluation context {}", responsesToSave.size(), evaluationContext);
 
         return ResponseEntity.ok("Réponses utilisateur enregistrées avec succès.");
+    }
+
+    // MÉTHODE UTILITAIRE pour déterminer la source d'évaluation
+    private EvaluationContext determineEvaluationContext(UUID questionnaireId, Long userId) {
+        // 1. Vérifier les campagnes d'abord
+        List<CampaignEvaluation> campaigns = campaignEvaluationRepository.findByParticipantIdsContains(userId);
+        for (CampaignEvaluation campaign : campaigns) {
+            boolean questionnaireFound = campaign.getQuestionnaires().stream()
+                    .anyMatch(q -> q.getId().equals(questionnaireId));
+            if (questionnaireFound) {
+                log.info("Found campaign evaluation {} for user {} and questionnaire {}",
+                        campaign.getId(), userId, questionnaireId);
+                return new EvaluationContext(EvaluationSource.CAMPAIGN, campaign.getId());
+            }
+        }
+
+        // 2. Vérifier les GroupeEvaluation
+        List<GroupeEvaluation> groupeEvaluations = groupeEvaluationRepo.findAll().stream()
+                .filter(ge -> ge.getParticipantIds() != null && ge.getParticipantIds().contains(userId))
+                .filter(ge -> ge.getQuestionnaire() != null && ge.getQuestionnaire().getId().equals(questionnaireId))
+                .collect(Collectors.toList());
+
+        if (!groupeEvaluations.isEmpty()) {
+            GroupeEvaluation groupeEvaluation = groupeEvaluations.get(0); // Prendre le premier
+            log.info("Found groupe evaluation {} for user {} and questionnaire {}",
+                    groupeEvaluation.getId(), userId, questionnaireId);
+            return new EvaluationContext(EvaluationSource.GROUPE_EVALUATION, groupeEvaluation.getId());
+        }
+
+        // 3. Par défaut, considérer comme campagne (pour compatibilité)
+        log.warn("No specific evaluation found for user {} and questionnaire {}. Defaulting to CAMPAIGN.",
+                userId, questionnaireId);
+        return new EvaluationContext(EvaluationSource.CAMPAIGN, null);
+    }
+
+
+    private UserResponse findExistingUserResponse(Long userId, UUID questionnaireId, UUID questionId, EvaluationContext context) {
+        // Chercher d'abord par la méthode existante
+        Optional<UserResponse> existing = userResponseRepository.findByUserIdAndQuestionnaireIdAndQuestionId(
+                userId, questionnaireId, questionId);
+
+        if (existing.isPresent()) {
+            UserResponse response = existing.get();
+            // Vérifier si elle correspond au contexte
+            if (context.getSource() == EvaluationSource.CAMPAIGN &&
+                    (response.getCampaignEvaluationId() != null || response.getEvaluationSource() == EvaluationSource.CAMPAIGN)) {
+                return response;
+            } else if (context.getSource() == EvaluationSource.GROUPE_EVALUATION &&
+                    (response.getGroupeEvaluationId() != null || response.getEvaluationSource() == EvaluationSource.GROUPE_EVALUATION)) {
+                return response;
+            }
+        }
+
+        return null;
+    }
+
+    // MÉTHODES UTILITAIRES pour la validation et l'assignation des valeurs
+    private boolean validateResponse(AddUserResponseDto dto) {
+        switch (dto.getResponseType()) {
+            case "Score": return dto.getScoreResponse() != null;
+            case "Notation": return dto.getRatingResponse() != null;
+            case "Texte": return dto.getTextResponse() != null;
+            case "Commentaire": return dto.getCommentResponse() != null;
+            case "Réponse multiple": return dto.getMultipleChoiceResponse() != null && !dto.getMultipleChoiceResponse().isEmpty();
+            case "Réponse unique": return dto.getSingleChoiceResponse() != null;
+            default: return false;
+        }
+    }
+
+    private void setResponseValues(UserResponse.UserResponseBuilder builder, AddUserResponseDto dto) {
+        switch (dto.getResponseType()) {
+            case "Score": builder.scoreResponse(dto.getScoreResponse()); break;
+            case "Notation": builder.ratingResponse(dto.getRatingResponse()); break;
+            case "Texte": builder.textResponse(dto.getTextResponse()); break;
+            case "Commentaire": builder.commentResponse(dto.getCommentResponse()); break;
+            case "Réponse multiple": builder.multipleChoiceResponse(dto.getMultipleChoiceResponse()); break;
+            case "Réponse unique": builder.singleChoiceResponse(dto.getSingleChoiceResponse()); break;
+        }
     }
 
     @Override

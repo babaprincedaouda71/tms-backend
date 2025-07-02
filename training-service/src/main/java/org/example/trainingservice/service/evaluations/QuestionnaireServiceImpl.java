@@ -104,15 +104,20 @@ public class QuestionnaireServiceImpl implements QuestionnaireService {
         return ResponseEntity.ok((new ArrayList<>(groupedData.values())));
     }
 
+
     @Override
     @Transactional(readOnly = true)
     public ResponseEntity<?> getQuestionnaireById(UUID questionnaireId) {
         Long currentCompanyId = SecurityUtils.getCurrentCompanyId();
 
-        Optional<Questionnaire> questionnaireOpt = questionnaireRepository.findByCompanyIdAndId(currentCompanyId, questionnaireId);
+        if (currentCompanyId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Company ID non trouvé pour l'utilisateur courant.");
+        }
+
+        // 🔧 UTILISATION de la nouvelle méthode optimisée
+        Optional<Questionnaire> questionnaireOpt = questionnaireRepository.findByCompanyIdAndIdWithQuestions(currentCompanyId, questionnaireId);
 
         if (questionnaireOpt.isEmpty()) {
-            // Ou vous pourriez lancer une exception personnalisée qui serait gérée par un @ControllerAdvice
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Questionnaire non trouvé avec l'ID : " + questionnaireId);
         }
 
@@ -120,12 +125,15 @@ public class QuestionnaireServiceImpl implements QuestionnaireService {
 
         // Vérification de sécurité : le questionnaire appartient-il à l'entreprise de l'utilisateur ?
         if (!questionnaire.getCompanyId().equals(currentCompanyId)) {
-            // Log de sécurité potentiel ici
+            log.warn("Tentative d'accès non autorisé au questionnaire {} par l'entreprise {}", questionnaireId, currentCompanyId);
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Accès non autorisé à ce questionnaire.");
         }
 
         // Mapper l'entité Questionnaire en GetQuestionnaireDto
         GetQuestionnaireDto questionnaireDto = EvaluationUtilMethods.convertToGetQuestionnaireDto(questionnaire);
+
+        log.debug("Questionnaire {} récupéré avec succès pour l'entreprise {}. Nombre de questions: {}",
+                questionnaireId, currentCompanyId, questionnaire.getQuestions() != null ? questionnaire.getQuestions().size() : 0);
 
         return ResponseEntity.ok(questionnaireDto);
     }

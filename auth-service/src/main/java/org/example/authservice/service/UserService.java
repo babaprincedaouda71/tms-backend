@@ -52,4 +52,6 @@ public interface UserService {
     ResponseEntity<?> getParticipantsNames(Set<Long> participantIds);
 
     ResponseEntity<?> getParticipantsEmails(Set<Long> participantIds);
+
+    ResponseEntity<?> getParticipantsDetails(Set<Long> participantIds);
 }

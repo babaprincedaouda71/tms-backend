@@ -10,13 +10,13 @@ import org.example.trainingservice.entity.campaign.CampaignEvaluation;
 import org.example.trainingservice.entity.campaign.Question;
 import org.example.trainingservice.entity.campaign.Questionnaire;
 import org.example.trainingservice.entity.campaign.UserResponse;
-import org.example.trainingservice.enums.GroupeStatusEnums;
-import org.example.trainingservice.enums.NeedSource;
-import org.example.trainingservice.enums.NeedStatusEnums;
+import org.example.trainingservice.entity.plan.evaluation.GroupeEvaluation;
+import org.example.trainingservice.enums.*;
 import org.example.trainingservice.repository.NeedRepository;
 import org.example.trainingservice.repository.evaluation.CampaignEvaluationRepository;
 import org.example.trainingservice.repository.evaluation.QuestionnaireRepository;
 import org.example.trainingservice.repository.evaluation.UserResponseRepository;
+import org.example.trainingservice.repository.plan.evaluation.GroupeEvaluationRepo;
 import org.example.trainingservice.utils.EvaluationUtilMethods;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -39,14 +39,16 @@ public class TeamEvaluationsServiceImpl implements TeamEvaluationsService {
     private final UserResponseRepository userResponseRepository;
     private final NeedRepository needRepository;
     private final UserCacheService userCacheService;
+    private final GroupeEvaluationRepo groupeEvaluationRepo;
 
-    public TeamEvaluationsServiceImpl(QuestionnaireRepository questionnaireRepository, AuthServiceClient authServiceClient, CampaignEvaluationRepository campaignEvaluationRepository, UserResponseRepository userResponseRepository, NeedRepository needRepository, UserCacheService userCacheService) {
+    public TeamEvaluationsServiceImpl(QuestionnaireRepository questionnaireRepository, AuthServiceClient authServiceClient, CampaignEvaluationRepository campaignEvaluationRepository, UserResponseRepository userResponseRepository, NeedRepository needRepository, UserCacheService userCacheService, GroupeEvaluationRepo groupeEvaluationRepo) {
         this.questionnaireRepository = questionnaireRepository;
         this.authServiceClient = authServiceClient;
         this.campaignEvaluationRepository = campaignEvaluationRepository;
         this.userResponseRepository = userResponseRepository;
         this.needRepository = needRepository;
         this.userCacheService = userCacheService;
+        this.groupeEvaluationRepo = groupeEvaluationRepo;
     }
 
 //    @Override
@@ -561,53 +563,97 @@ public class TeamEvaluationsServiceImpl implements TeamEvaluationsService {
         return allSent ? "Terminée" : "Brouillon";
     }
 
-    // 3. Modification de getTeamEvaluations
+    // MODIFICATION de getTeamEvaluations pour inclure GroupeEvaluation
     @Override
     public ResponseEntity<List<GetTeamEvaluationsDto>> getTeamEvaluations(Long managerId) {
         List<Long> myTeamIds = authServiceClient.getMyTeam(managerId);
         List<GetTeamEvaluationsDto> teamEvaluationDtos = new ArrayList<>();
 
         if (myTeamIds != null && !myTeamIds.isEmpty()) {
-            // On récupère toutes les campagnes publiées où au moins un membre de l'équipe est participant.
-            List<CampaignEvaluation> campaignEvaluations = campaignEvaluationRepository.findByAnyParticipantIdInAndStatus(myTeamIds, "Publiée");
 
-            for (CampaignEvaluation campaignEvaluation : campaignEvaluations) {
-                for (Questionnaire questionnaire : campaignEvaluation.getQuestionnaires()) {
-                    // Récupérer les réponses des membres de l'équipe pour CE QUESTIONNAIRE
-                    // Il est important de ne récupérer que les réponses des membres de l'équipe concernés par CE questionnaire
-                    // La logique de `campaignEvaluation.getParticipantIds()` pourrait être utilisée pour affiner `myTeamIds`
-                    // si `myTeamIds` est plus large que les participants réels à la campagne/questionnaire.
-                    // Pour l'instant, on suppose que `myTeamIds` sont tous potentiellement concernés.
-                    List<Long> myTeamIdsForThisQuestionnaire = myTeamIds.stream()
-                            .filter(campaignEvaluation.getParticipantIds()::contains)
-                            .collect(Collectors.toList()); // Collecte en List
-                    List<UserResponse> teamResponsesForQuestionnaire =
-                            userResponseRepository.findByQuestionnaireIdAndUserIdIn(questionnaire.getId(), myTeamIds);
+            // 1. ÉVALUATIONS DE CAMPAGNE (logique existante)
+            List<GetTeamEvaluationsDto> campaignEvaluations = getCampaignTeamEvaluations(myTeamIds);
+            teamEvaluationDtos.addAll(campaignEvaluations);
 
-                    // Utilisation des nouvelles méthodes utilitaires
-                    Integer globalProgress = calculateGlobalProgressForTeam(questionnaire, teamResponsesForQuestionnaire, myTeamIdsForThisQuestionnaire);
-//                    String globalStatus = calculateGlobalStatusForTeam(questionnaire, teamResponsesForQuestionnaire, myTeamIdsForThisQuestionnaire);
-
-                    String globalIsSentToManager = calculateGlobalIsSentToAdmin(questionnaire, teamResponsesForQuestionnaire, myTeamIdsForThisQuestionnaire);
-
-                    GetTeamEvaluationsDto dto = GetTeamEvaluationsDto.builder()
-                            .id(questionnaire.getId())
-                            .title(questionnaire.getTitle())
-                            .status(globalIsSentToManager) // Statut global calculé
-                            .creationDate(questionnaire.getCreationDate().toString()) // Assurez-vous que getCreationDate() n'est pas null
-                            .type(questionnaire.getType())
-                            .participantIds(myTeamIdsForThisQuestionnaire)
-                            .participants(myTeamIdsForThisQuestionnaire.size()) // Nombre de membres de l'équipe potentiellement concernés
-                            .progress(globalProgress) // Progression globale calculée
-                            .build();
-                    teamEvaluationDtos.add(dto);
-                }
-            }
+            // 2. ÉVALUATIONS DE GROUPE (nouvelle logique)
+            List<GetTeamEvaluationsDto> groupeEvaluations = getGroupeTeamEvaluations(myTeamIds);
+            teamEvaluationDtos.addAll(groupeEvaluations);
         }
+
         return ResponseEntity.ok(teamEvaluationDtos);
     }
 
-    // 4. Modification de getTeamEvaluationDetails
+    // NOUVELLE MÉTHODE pour les évaluations de groupe d'équipe
+    private List<GetTeamEvaluationsDto> getGroupeTeamEvaluations(List<Long> myTeamIds) {
+        List<GetTeamEvaluationsDto> groupeEvaluationDtos = new ArrayList<>();
+
+        // Récupérer toutes les GroupeEvaluation où au moins un membre de l'équipe participe
+        List<GroupeEvaluation> groupeEvaluations = groupeEvaluationRepo.findAll().stream()
+                .filter(ge -> ge.getParticipantIds() != null &&
+                        ge.getParticipantIds().stream().anyMatch(myTeamIds::contains))
+                .filter(ge -> ge.getStatus() == GroupeEvaluationStatusEnums.PUBLISHED)
+                .collect(Collectors.toList());
+
+        log.info("Found {} published groupe evaluations for team", groupeEvaluations.size());
+
+        for (GroupeEvaluation groupeEvaluation : groupeEvaluations) {
+            Questionnaire questionnaire = groupeEvaluation.getQuestionnaire();
+            if (questionnaire != null) {
+
+                // Filtrer les membres d'équipe qui participent à CETTE GroupeEvaluation
+                List<Long> teamParticipants = myTeamIds.stream()
+                        .filter(groupeEvaluation.getParticipantIds()::contains)
+                        .collect(Collectors.toList());
+
+                log.info("Processing groupe evaluation {} with {} team participants",
+                        groupeEvaluation.getId(), teamParticipants.size());
+
+                // UTILISATION CORRECTE : Récupérer par groupeEvaluationId ET source
+                List<UserResponse> teamResponsesForGroupe = userResponseRepository
+                        .findByGroupeEvaluationIdAndUserIdIn(groupeEvaluation.getId(), teamParticipants);
+
+                // SI LA MÉTHODE CI-DESSUS N'EXISTE PAS ENCORE, utiliser cette alternative :
+                if (teamResponsesForGroupe.isEmpty()) {
+                    teamResponsesForGroupe = userResponseRepository
+                            .findByQuestionnaireIdAndUserIdIn(questionnaire.getId(), teamParticipants)
+                            .stream()
+                            .filter(ur -> ur.getEvaluationSource() == EvaluationSource.GROUPE_EVALUATION)
+                            .filter(ur -> groupeEvaluation.getId().equals(ur.getGroupeEvaluationId()))
+                            .collect(Collectors.toList());
+                }
+
+                log.info("Found {} responses for groupe evaluation {}",
+                        teamResponsesForGroupe.size(), groupeEvaluation.getId());
+
+                // Calculer progression et statut pour cette évaluation de groupe
+                Integer globalProgress = calculateGlobalProgressForGroupe(
+                        questionnaire, teamResponsesForGroupe, teamParticipants, groupeEvaluation.getId());
+                String globalStatus = calculateGlobalStatusForGroupe(
+                        questionnaire, teamResponsesForGroupe, teamParticipants, groupeEvaluation.getId());
+
+                log.info("Groupe evaluation {} - Progress: {}%, Status: {}",
+                        groupeEvaluation.getId(), globalProgress, globalStatus);
+
+                GetTeamEvaluationsDto dto = GetTeamEvaluationsDto.builder()
+                        .id(questionnaire.getId())
+                        .title(groupeEvaluation.getLabel() + " - " + questionnaire.getTitle())
+                        .status(globalStatus)
+                        .creationDate(groupeEvaluation.getCreationDate().toString())
+                        .type("Formation")
+                        .participantIds(teamParticipants)
+                        .participants(teamParticipants.size())
+                        .progress(globalProgress)
+                        .build();
+
+                groupeEvaluationDtos.add(dto);
+            }
+        }
+
+        log.info("Returning {} groupe evaluations for team", groupeEvaluationDtos.size());
+        return groupeEvaluationDtos;
+    }
+
+    // MODIFICATION de getTeamEvaluationDetails pour supporter GroupeEvaluation
     @Override
     public ResponseEntity<?> getTeamEvaluationDetails(UUID questionnaireId, Long managerId) {
         Questionnaire questionnaire = questionnaireRepository.findById(questionnaireId)
@@ -619,55 +665,60 @@ public class TeamEvaluationsServiceImpl implements TeamEvaluationsService {
         });
 
         List<Long> myTeamIds = authServiceClient.getMyTeam(managerId);
-        // log.debug("My team IDs : {}.", myTeamIds); // Utilisez log.info ou log.debug
 
-        List<CampaignEvaluation> campaignEvaluations = campaignEvaluationRepository.findByAnyParticipantIdInAndStatus(myTeamIds, "Publiée");
-        List<Long> teamParticipantIds = campaignEvaluations.get(0).getParticipantIds().stream().filter(myTeamIds::contains).toList();
+        // Déterminer si c'est une évaluation de campagne ou de groupe
+        EvaluationSource evaluationSource = determineEvaluationSourceForTeam(questionnaireId, myTeamIds);
 
         List<TeamEvaluationDetailsForUserDto> participantsDetails = new ArrayList<>();
-        // Récupérer toutes les réponses de l'équipe pour ce questionnaire spécifique en une seule fois
-        List<UserResponse> allTeamResponsesForQuestionnaire =
-                userResponseRepository.findByQuestionnaireIdAndUserIdIn(questionnaireId, teamParticipantIds);
+        List<UserResponse> allTeamResponsesForQuestionnaire;
+        List<Long> teamParticipantIds;
 
+        if (evaluationSource == EvaluationSource.CAMPAIGN) {
+            // Logique existante pour les campagnes
+            List<CampaignEvaluation> campaignEvaluations = campaignEvaluationRepository
+                    .findByAnyParticipantIdInAndStatus(myTeamIds, "Publiée");
+            teamParticipantIds = campaignEvaluations.get(0).getParticipantIds().stream()
+                    .filter(myTeamIds::contains)
+                    .collect(Collectors.toList());
+
+            allTeamResponsesForQuestionnaire = userResponseRepository
+                    .findByQuestionnaireIdAndUserIdIn(questionnaireId, teamParticipantIds);
+
+        } else {
+            // NOUVELLE LOGIQUE pour GroupeEvaluation
+            GroupeEvaluation groupeEvaluation = findGroupeEvaluationByQuestionnaire(questionnaireId, myTeamIds);
+            if (groupeEvaluation == null) {
+                throw new RuntimeException("GroupeEvaluation non trouvée pour ce questionnaire");
+            }
+
+            teamParticipantIds = myTeamIds.stream()
+                    .filter(groupeEvaluation.getParticipantIds()::contains)
+                    .collect(Collectors.toList());
+
+            // 🎯 ICI AUSSI ON UTILISE findByGroupeEvaluationIdAndUserIdIn
+            allTeamResponsesForQuestionnaire = userResponseRepository
+                    .findByGroupeEvaluationIdAndUserIdIn(groupeEvaluation.getId(), teamParticipantIds);
+        }
+
+        // Le reste de la logique reste identique...
         if (!teamParticipantIds.isEmpty()) {
-            log.info("Traitement des détails d'évaluation pour le questionnaire {} pour les membres de l'équipe.", questionnaireId);
-
             for (Long userId : teamParticipantIds) {
-                // Filtrer les réponses pour l'utilisateur courant à partir de la liste déjà chargée
                 List<UserResponse> userResponsesForThisUser = allTeamResponsesForQuestionnaire.stream()
                         .filter(response -> response.getUserId().equals(userId))
-                        .toList();
+                        .collect(Collectors.toList());
 
-                // Calcul de la progression individuelle en utilisant la méthode utilitaire
                 int progress = calculateUserProgressForQuestionnaire(userId, questionnaire, userResponsesForThisUser);
-
-                // Déterminer le statut individuel basé sur la progression calculée
                 String status = calculateIndividualIsSentToAdmin(questionnaire, userResponsesForThisUser, userId);
 
                 TeamEvaluationDetailsForUserDto userDetailsFromAuth = authServiceClient.getParticipant(userId);
-                String name = "Utilisateur Inconnu";
-                String position = "N/A";
-                String groupe = "N/A";
-                if (userDetailsFromAuth != null) {
-                    name = userDetailsFromAuth.getName();
-                    position = userDetailsFromAuth.getPosition();
-                    groupe = userDetailsFromAuth.getGroupe();
-                } else {
-                    log.warn("Détails non trouvés pour l'utilisateur ID: {}. Utilisation de valeurs par défaut.", userId);
-                }
+                String name = userDetailsFromAuth != null ? userDetailsFromAuth.getName() : "Utilisateur Inconnu";
+                String position = userDetailsFromAuth != null ? userDetailsFromAuth.getPosition() : "N/A";
+                String groupe = userDetailsFromAuth != null ? userDetailsFromAuth.getGroupe() : "N/A";
 
-                Boolean isSentToManger = false; // Valeur par défaut si aucune réponse n'est trouvée
-                Boolean isSentToAdmin = false; // Valeur par défaut si aucune réponse n'est trouvée
-                if (!userResponsesForThisUser.isEmpty()) {
-                    // Si la liste n'est PAS vide, on peut accéder au premier élément
-                    isSentToManger = userResponsesForThisUser.get(0).getIsSentToManager();
-                    isSentToAdmin = userResponsesForThisUser.get(0).getIsSentToAdmin();
-                } else {
-                    // Gérer le cas où la liste est vide.
-                    // Ici, isSent reste null comme initialisé.
-                    // Tu peux ajouter un log ou définir une autre valeur par défaut si besoin.
-                    log.info("Aucune réponse trouvée pour l'utilisateur ID: {} dans allTeamResponsesForQuestionnaire. isSent sera null.", userId);
-                }
+                Boolean isSentToManager = !userResponsesForThisUser.isEmpty() ?
+                        userResponsesForThisUser.get(0).getIsSentToManager() : false;
+                Boolean isSentToAdmin = !userResponsesForThisUser.isEmpty() ?
+                        userResponsesForThisUser.get(0).getIsSentToAdmin() : false;
 
                 participantsDetails.add(TeamEvaluationDetailsForUserDto.builder()
                         .id(userId)
@@ -676,28 +727,178 @@ public class TeamEvaluationsServiceImpl implements TeamEvaluationsService {
                         .groupe(groupe)
                         .progress(progress)
                         .status(status)
-                        .isSentToManager(isSentToManger)
+                        .isSentToManager(isSentToManager)
                         .isSentToAdmin(isSentToAdmin)
                         .build());
             }
         }
 
-        // Calcul de la progression globale et du statut global en utilisant les méthodes utilitaires
         Integer globalProgress = calculateGlobalProgressForTeam(questionnaire, allTeamResponsesForQuestionnaire, teamParticipantIds);
         String globalStatus = calculateGlobalStatusForTeam(questionnaire, allTeamResponsesForQuestionnaire, teamParticipantIds);
 
         TeamEvaluationDetailsDto detailsDto = TeamEvaluationDetailsDto.builder()
                 .id(questionnaire.getId())
                 .title(questionnaire.getTitle())
-                .status(globalStatus) // Statut global calculé
-                .creationDate(questionnaire.getCreationDate().toString()) // Assurez-vous que getCreationDate() n'est pas null
+                .status(globalStatus)
+                .creationDate(questionnaire.getCreationDate().toString())
                 .type(questionnaire.getType())
-                .participants(participantsDetails) // Liste des détails des participants
-                .progress(globalProgress) // Progression globale calculée
+                .participants(participantsDetails)
+                .progress(globalProgress)
                 .questions(questionDtos)
                 .build();
 
         return ResponseEntity.ok(detailsDto);
+    }
+
+    // MÉTHODES UTILITAIRES pour GroupeEvaluation
+
+    private EvaluationSource determineEvaluationSourceForTeam(UUID questionnaireId, List<Long> teamIds) {
+        // Vérifier d'abord les campagnes
+        List<CampaignEvaluation> campaigns = campaignEvaluationRepository
+                .findByAnyParticipantIdInAndStatus(teamIds, "Publiée");
+        boolean isFromCampaign = campaigns.stream()
+                .anyMatch(campaign -> campaign.getQuestionnaires().stream()
+                        .anyMatch(q -> q.getId().equals(questionnaireId)));
+
+        if (isFromCampaign) {
+            return EvaluationSource.CAMPAIGN;
+        }
+
+        // Sinon, c'est probablement une GroupeEvaluation
+        return EvaluationSource.GROUPE_EVALUATION;
+    }
+
+    private GroupeEvaluation findGroupeEvaluationByQuestionnaire(UUID questionnaireId, List<Long> teamIds) {
+        return groupeEvaluationRepo.findAll().stream()
+                .filter(ge -> ge.getQuestionnaire() != null &&
+                        ge.getQuestionnaire().getId().equals(questionnaireId))
+                .filter(ge -> ge.getParticipantIds() != null &&
+                        ge.getParticipantIds().stream().anyMatch(teamIds::contains))
+                .findFirst()
+                .orElse(null);
+    }
+
+    // Méthodes de calcul adaptées pour GroupeEvaluation (similaires aux existantes)
+    private Integer calculateGlobalProgressForGroupe(Questionnaire questionnaire,
+                                                     List<UserResponse> responses,
+                                                     List<Long> participantIds,
+                                                     UUID groupeEvaluationId) {
+        if (questionnaire == null || participantIds == null || participantIds.isEmpty()) {
+            log.warn("Invalid parameters for progress calculation: questionnaire={}, participantIds={}",
+                    questionnaire != null ? questionnaire.getId() : "null", participantIds);
+            return 0;
+        }
+
+        List<Integer> individualProgressions = new ArrayList<>();
+
+        for (Long userId : participantIds) {
+            // Filtrer les réponses pour l'utilisateur courant dans cette GroupeEvaluation spécifique
+            List<UserResponse> userSpecificResponses = responses.stream()
+                    .filter(response -> response.getUserId().equals(userId))
+                    .filter(response -> groupeEvaluationId.equals(response.getGroupeEvaluationId()) ||
+                            response.getEvaluationSource() == EvaluationSource.GROUPE_EVALUATION)
+                    .collect(Collectors.toList());
+
+            int userProgress = calculateUserProgressForQuestionnaire(userId, questionnaire, userSpecificResponses);
+            individualProgressions.add(userProgress);
+
+            log.debug("User {} progress in groupe evaluation {}: {}%", userId, groupeEvaluationId, userProgress);
+        }
+
+        if (individualProgressions.isEmpty()) {
+            log.warn("No individual progressions calculated for groupe evaluation {}", groupeEvaluationId);
+            return 0;
+        }
+
+        double averageProgress = individualProgressions.stream()
+                .mapToInt(Integer::intValue)
+                .average()
+                .orElse(0.0);
+
+        int result = (int) Math.round(averageProgress);
+        log.info("Global progress for groupe evaluation {}: {}%", groupeEvaluationId, result);
+        return result;
+    }
+
+    private String calculateGlobalStatusForGroupe(Questionnaire questionnaire,
+                                                  List<UserResponse> responses,
+                                                  List<Long> participantIds,
+                                                  UUID groupeEvaluationId) {
+        if (questionnaire == null || participantIds == null || participantIds.isEmpty()) {
+            return "En attente";
+        }
+
+        List<String> individualStatuses = new ArrayList<>();
+
+        for (Long userId : participantIds) {
+            List<UserResponse> userSpecificResponses = responses.stream()
+                    .filter(response -> response.getUserId().equals(userId))
+                    .filter(response -> groupeEvaluationId.equals(response.getGroupeEvaluationId()) ||
+                            response.getEvaluationSource() == EvaluationSource.GROUPE_EVALUATION)
+                    .collect(Collectors.toList());
+
+            int progress = calculateUserProgressForQuestionnaire(userId, questionnaire, userSpecificResponses);
+            String userStatus = "En attente";
+            if (progress == 100) {
+                userStatus = "Terminé";
+            } else if (progress > 0) {
+                userStatus = "En cours";
+            }
+            individualStatuses.add(userStatus);
+
+            log.debug("User {} status in groupe evaluation {}: {}", userId, groupeEvaluationId, userStatus);
+        }
+
+        String globalStatus;
+        if (individualStatuses.stream().allMatch("Terminé"::equalsIgnoreCase)) {
+            globalStatus = "Terminé";
+        } else if (individualStatuses.stream().anyMatch("En cours"::equalsIgnoreCase)) {
+            globalStatus = "En cours";
+        } else {
+            globalStatus = "En attente";
+        }
+
+        log.info("Global status for groupe evaluation {}: {}", groupeEvaluationId, globalStatus);
+        return globalStatus;
+    }
+
+    // MÉTHODE EXISTANTE refactorisée pour les campagnes
+    private List<GetTeamEvaluationsDto> getCampaignTeamEvaluations(List<Long> myTeamIds) {
+        List<GetTeamEvaluationsDto> campaignEvaluationDtos = new ArrayList<>();
+
+        List<CampaignEvaluation> campaignEvaluations = campaignEvaluationRepository
+                .findByAnyParticipantIdInAndStatus(myTeamIds, "Publiée");
+
+        for (CampaignEvaluation campaignEvaluation : campaignEvaluations) {
+            for (Questionnaire questionnaire : campaignEvaluation.getQuestionnaires()) {
+                List<Long> myTeamIdsForThisQuestionnaire = myTeamIds.stream()
+                        .filter(campaignEvaluation.getParticipantIds()::contains)
+                        .collect(Collectors.toList());
+
+                List<UserResponse> teamResponsesForQuestionnaire = userResponseRepository
+                        .findByQuestionnaireIdAndUserIdIn(questionnaire.getId(), myTeamIds);
+
+                Integer globalProgress = calculateGlobalProgressForTeam(
+                        questionnaire, teamResponsesForQuestionnaire, myTeamIdsForThisQuestionnaire);
+                String globalIsSentToManager = calculateGlobalIsSentToAdmin(
+                        questionnaire, teamResponsesForQuestionnaire, myTeamIdsForThisQuestionnaire);
+
+                GetTeamEvaluationsDto dto = GetTeamEvaluationsDto.builder()
+                        .id(questionnaire.getId())
+                        .title(questionnaire.getTitle())
+                        .status(globalIsSentToManager)
+                        .creationDate(questionnaire.getCreationDate().toString())
+                        .type("Campagne") // Identifier la source
+                        .participantIds(myTeamIdsForThisQuestionnaire)
+                        .participants(myTeamIdsForThisQuestionnaire.size())
+                        .progress(globalProgress)
+                        .build();
+
+                campaignEvaluationDtos.add(dto);
+            }
+        }
+
+        return campaignEvaluationDtos;
     }
 
 //    @Transactional
@@ -866,4 +1067,125 @@ public class TeamEvaluationsServiceImpl implements TeamEvaluationsService {
     }
 
     /**/
+
+    // 🔄 CHANGÉ : Méthode prend groupeEvaluationId au lieu de questionnaireId
+    @Override
+    public ResponseEntity<?> getAdminEvaluationDetails(UUID groupeEvaluationId) {
+        log.info("Admin requesting groupe evaluation details for groupeEvaluationId {}", groupeEvaluationId);
+
+        // 🔄 CHANGÉ : Récupérer la GroupeEvaluation directement par son ID
+        GroupeEvaluation groupeEvaluation = groupeEvaluationRepo.findById(groupeEvaluationId)
+                .orElseThrow(() -> new RuntimeException("GroupeEvaluation non trouvée avec ID: " + groupeEvaluationId));
+
+        // 🔄 CHANGÉ : Récupérer le questionnaire depuis la GroupeEvaluation
+        Questionnaire questionnaire = groupeEvaluation.getQuestionnaire();
+        if (questionnaire == null) {
+            throw new RuntimeException("Aucun questionnaire associé à la GroupeEvaluation ID: " + groupeEvaluationId);
+        }
+
+        // 🔄 CHANGÉ : Récupérer les participants de CETTE GroupeEvaluation spécifique
+        List<Long> allParticipantIds = groupeEvaluation.getParticipantIds();
+        if (allParticipantIds == null || allParticipantIds.isEmpty()) {
+            log.warn("No participants found for groupeEvaluationId {}", groupeEvaluationId);
+            return ResponseEntity.ok(new ArrayList<TeamEvaluationDetailsForUserDto>());
+        }
+
+        log.info("Found {} participants in groupe evaluation {}", allParticipantIds.size(), groupeEvaluationId);
+
+        List<TeamEvaluationDetailsForUserDto> participantsDetails = new ArrayList<>();
+
+        // 🔄 CHANGÉ : Récupérer les réponses de CETTE GroupeEvaluation spécifique
+        List<UserResponse> allResponsesForEvaluation = getSpecificGroupeEvaluationResponses(
+                groupeEvaluationId, questionnaire.getId(), allParticipantIds);
+
+        log.info("Found {} total responses for groupe evaluation {}",
+                allResponsesForEvaluation.size(), groupeEvaluationId);
+
+        // ✅ INCHANGÉ : Traiter chaque participant
+        for (Long userId : allParticipantIds) {
+            // ✅ INCHANGÉ : Filtrer les réponses pour l'utilisateur courant
+            List<UserResponse> userResponsesForThisUser = allResponsesForEvaluation.stream()
+                    .filter(response -> response.getUserId().equals(userId))
+                    .collect(Collectors.toList());
+
+            // ✅ INCHANGÉ : Calcul de la progression individuelle
+            int progress = calculateUserProgressForQuestionnaire(userId, questionnaire, userResponsesForThisUser);
+
+            // ✅ INCHANGÉ : Déterminer le statut individuel
+            String status = calculateIndividualIsSentToAdmin(questionnaire, userResponsesForThisUser, userId);
+
+            // ✅ INCHANGÉ : Récupérer les détails de l'utilisateur
+            TeamEvaluationDetailsForUserDto userDetailsFromAuth = authServiceClient.getParticipant(userId);
+            String name = "Utilisateur Inconnu";
+            String position = "N/A";
+            String groupe = "N/A";
+            if (userDetailsFromAuth != null) {
+                name = userDetailsFromAuth.getName();
+                position = userDetailsFromAuth.getPosition();
+                groupe = userDetailsFromAuth.getGroupe();
+            } else {
+                log.warn("Détails non trouvés pour l'utilisateur ID: {}. Utilisation de valeurs par défaut.", userId);
+            }
+
+            // ✅ INCHANGÉ : Récupérer les statuts d'envoi
+            Boolean isSentToManager = false;
+            Boolean isSentToAdmin = false;
+            if (!userResponsesForThisUser.isEmpty()) {
+                UserResponse firstResponse = userResponsesForThisUser.get(0);
+                isSentToManager = firstResponse.getIsSentToManager();
+                isSentToAdmin = firstResponse.getIsSentToAdmin();
+            } else {
+                log.debug("Aucune réponse trouvée pour l'utilisateur ID: {} dans la groupe evaluation {}", userId, groupeEvaluationId);
+            }
+
+            // ✅ INCHANGÉ : Construction du DTO (exactement comme demandé)
+            participantsDetails.add(TeamEvaluationDetailsForUserDto.builder()
+                    .id(userId)
+                    .name(name)
+                    .position(position)
+                    .groupe(groupe)
+                    .progress(progress)
+                    .status(status)
+                    .isSentToManager(isSentToManager)
+                    .isSentToAdmin(isSentToAdmin)
+                    .build());
+
+            log.debug("Processed user {}: progress={}%, status={}, isSentToAdmin={}",
+                    userId, progress, status, isSentToAdmin);
+        }
+
+        log.info("Admin groupe evaluation details completed. Processed {} participants for groupeEvaluationId {}",
+                participantsDetails.size(), groupeEvaluationId);
+
+        return ResponseEntity.ok(participantsDetails);
+    }
+
+    // 🔄 CHANGÉ : Nouvelle méthode spécifique pour UNE GroupeEvaluation
+    private List<UserResponse> getSpecificGroupeEvaluationResponses(UUID groupeEvaluationId, UUID questionnaireId, List<Long> participantIds) {
+        if (participantIds.isEmpty()) {
+            log.warn("No participants provided for groupeEvaluationId {}", groupeEvaluationId);
+            return new ArrayList<>();
+        }
+
+        List<UserResponse> responses = new ArrayList<>();
+
+        // Essayer d'abord avec findByGroupeEvaluationIdAndUserIdIn
+        responses = userResponseRepository.findByGroupeEvaluationIdAndUserIdIn(groupeEvaluationId, participantIds);
+
+        // Si la méthode ci-dessus ne fonctionne pas, utiliser le fallback
+        if (responses.isEmpty()) {
+            log.info("No responses found with groupeEvaluationId, trying fallback method for groupeEvaluationId {}", groupeEvaluationId);
+            responses = userResponseRepository
+                    .findByQuestionnaireIdAndUserIdIn(questionnaireId, participantIds)
+                    .stream()
+                    .filter(ur -> ur.getEvaluationSource() == EvaluationSource.GROUPE_EVALUATION)
+                    .filter(ur -> groupeEvaluationId.equals(ur.getGroupeEvaluationId()))
+                    .collect(Collectors.toList());
+        }
+
+        log.info("Retrieved {} responses for {} participants in groupe evaluation {}",
+                responses.size(), participantIds.size(), groupeEvaluationId);
+
+        return responses;
+    }
 }

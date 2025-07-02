@@ -11,4 +11,7 @@ public interface TeamEvaluationsService {
     ResponseEntity<?> getTeamEvaluationDetails(UUID questionnaireId, Long managerId);
 
     ResponseEntity<?> sendEvaluationToAdmin(UUID id, SendEvaluationToAdminDto sendEvaluationToAdminDto);
+
+    // 🔄 CHANGÉ : Méthode prend groupeEvaluationId au lieu de questionnaireId
+    ResponseEntity<?> getAdminEvaluationDetails(UUID groupeEvaluationId);
 }

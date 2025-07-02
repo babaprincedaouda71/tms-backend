@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.example.trainingservice.enums.EvaluationSource;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -24,7 +25,11 @@ public class UserResponse {
     private Long companyId;
 
     private Long userId;
+
     private UUID campagneEvaluationId;
+
+    private UUID groupeEvaluationId;
+
     private UUID questionnaireId;
     private UUID questionId;
 
@@ -55,4 +60,7 @@ public class UserResponse {
     private Boolean isSentToManager;
 
     private Boolean isSentToAdmin;
+
+    @Enumerated(EnumType.STRING)
+    private EvaluationSource evaluationSource;
 }

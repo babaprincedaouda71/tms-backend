@@ -63,6 +63,7 @@ public class CompanyController {
     @GetMapping("/company/current")
     public ResponseEntity<?> getCurrentCompany() {
         log.error("Getting current company");
+        companyService.getCurrentCompany();
         return companyService.getCurrentCompany();
     }
 }

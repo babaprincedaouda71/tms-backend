@@ -544,6 +544,35 @@ public class UserServiceImpl implements UserService {
         }
     }
 
+    @Override
+    public ResponseEntity<?> getParticipantsDetails(Set<Long> participantIds) {
+        if (participantIds == null || participantIds.isEmpty()) {
+            return ResponseEntity.ok(Collections.emptyList());
+        }
+        try {
+            // Construction directe des DTOs
+            List<ParticipantsForPresenceListDto> participantsNamesDtos = userRepository
+                    .findAllById(participantIds)
+                    .stream()
+                    .filter(Objects::nonNull)
+                    .map(user -> ParticipantsForPresenceListDto.builder()
+                            .id(user.getId())
+                            .firstName(user.getFirstName())
+                            .lastName(user.getLastName())
+                            .cin(user.getCin())
+                            .cnss(user.getSocialSecurityNumber())
+                            .build())
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(participantsNamesDtos);
+
+        } catch (Exception e) {
+            log.error("Error retrieving participants details: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error retrieving participants names");
+        }
+    }
+
     // Méthode helper pour construire le nom complet
     private String buildFullName(String firstName, String lastName) {
         StringBuilder name = new StringBuilder();

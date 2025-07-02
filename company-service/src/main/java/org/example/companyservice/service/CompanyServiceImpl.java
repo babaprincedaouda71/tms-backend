@@ -1,5 +1,6 @@
 package org.example.companyservice.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.example.companyservice.client.AuthClient;
 import org.example.companyservice.client.NotificationClient;
 import org.example.companyservice.dto.*;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
+@Slf4j
 @Service
 public class CompanyServiceImpl implements CompanyService {
     private final CompanyRepository companyRepository;
@@ -104,11 +106,12 @@ public class CompanyServiceImpl implements CompanyService {
     @Override
     public ResponseEntity<?> getCurrentCompany() {
         Long companyId = SecurityUtils.getCurrentCompanyId();
+        log.error("Company id : {}", companyId);
         Optional<Company> byId = companyRepository.findById(companyId);
-        if (byId.isPresent()) {
-            return ResponseEntity.ok(CompanyUtilMethods.mapToCurrentCompanyDto(byId.get()));
+        if (byId.isEmpty()) {
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(CompanyUtilMethods.mapToCurrentCompanyDto(byId.get()));
     }
 
     /********************************************************/
