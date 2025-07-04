@@ -20,6 +20,10 @@ public class SecurityConfig {
     @Value("${gateway.company-service.public}")
     private String[] companyServicePublicPaths;
 
+    // Correction de l'annotation et passage en tableau String[]
+    @Value("${gateway.training-service.public}")
+    private String[] trainingServicePublicPaths;
+
     public SecurityConfig(JwtService jwtService) {
         this.jwtService = jwtService;
     }
@@ -29,7 +33,9 @@ public class SecurityConfig {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorizeRequests ->
-                        authorizeRequests.requestMatchers(companyServicePublicPaths).permitAll()
+                        authorizeRequests
+                                .requestMatchers(companyServicePublicPaths).permitAll()
+                                .requestMatchers(trainingServicePublicPaths).permitAll()
                                 .anyRequest().authenticated()
                 )
                 // filtre

@@ -64,6 +64,9 @@ public class AuthServiceImpl implements AuthService {
     @Value("${app.expiration-time}")
     private Long jwtExpiration;
 
+    @Value("${app.frontend.url}")
+    private String frontendUrl; // Injecter l'URL du frontend
+
     public AuthServiceImpl(UserRepository userRepository, PasswordResetTokenRepository passwordResetTokenRepository, PasswordTokenRepository passwordTokenRepository, PasswordEncoder passwordEncoder, JwtService jwtService, AuthenticationManager authenticationManager, CompanyClient companyClient, TokenRepo tokenRepo, TokenService tokenService, NotificationClient notificationClient, CollaboratorClient collaboratorClient, GroupeRepository groupeRepository) {
         this.userRepository = userRepository;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
@@ -365,7 +368,7 @@ public class AuthServiceImpl implements AuthService {
      */
     private void handleFirstLoginNotification(User user) {
         if (user.isFirstLogin() && user.isProfileIncomplete()) {
-            String link = "http://localhost:3000/User/user-profile/edit-profile?id=" + user.getId();
+            String link = frontendUrl + "/User/user-profile/edit-profile?id=" + user.getId();
             NotificationsRequest notification = NotificationsRequest.builder()
                     .userId(user.getId())
                     .title("Complétion de profil")
@@ -426,25 +429,32 @@ public class AuthServiceImpl implements AuthService {
      * Construit la réponse de login et met à jour l'utilisateur.
      */
     private ResponseEntity<LoginResponse> createSuccessResponse(User user, String jwt, boolean registrationCompleted) {
-        // Construction de la réponse
         LoginResponse response = buildLoginResponse(user, jwt, registrationCompleted);
 
-        // Création du cookie sécurisé
+        // Détecter si on est en environnement de développement
+        boolean isDevelopment = !isProductionEnvironment(); // À implémenter selon votre logique
+
         ResponseCookie cookie = ResponseCookie.from("token", jwt)
                 .httpOnly(true)
-                .secure(true)
+                .secure(!isDevelopment) // Secure uniquement en production
                 .path("/")
                 .maxAge(Duration.ofMillis(jwtExpiration))
+                .sameSite(isDevelopment ? "Lax" : "None") // Ajustement pour dev/prod
                 .build();
 
-        // Mise à jour de l'utilisateur
         updateUserAfterLogin(user);
-
         logger.info("Connexion réussie pour l'utilisateur {}", user.getEmail());
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
                 .body(response);
+    }
+
+    // Méthode helper pour détecter l'environnement
+    private boolean isProductionEnvironment() {
+        // Implémentez selon votre logique (variables d'environnement, profils Spring, etc.)
+        String environment = System.getProperty("spring.profiles.active");
+        return "production".equals(environment) || "prod".equals(environment);
     }
 
     /**
@@ -546,7 +556,15 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private ResponseCookie createTokenCookie(String token) {
-        return ResponseCookie.from("token", token).httpOnly(true).secure(true).path("/").maxAge(Duration.ofHours(1)).build();
+        boolean isDevelopment = !isProductionEnvironment();
+
+        return ResponseCookie.from("token", token)
+                .httpOnly(true)
+                .secure(!isDevelopment)
+                .path("/")
+                .maxAge(Duration.ofHours(1))
+                .sameSite(isDevelopment ? "Lax" : "None")
+                .build();
     }
 
     @Override
@@ -637,11 +655,14 @@ public class AuthServiceImpl implements AuthService {
      * Crée un nouveau cookie avec le token existant mais avec une durée de validité prolongée.
      */
     private ResponseCookie refreshSessionCookie(String token) {
+        boolean isDevelopment = !isProductionEnvironment();
+
         return ResponseCookie.from("token", token)
                 .httpOnly(true)
-                .secure(true)
+                .secure(!isDevelopment)
                 .path("/")
                 .maxAge(Duration.ofHours(1))
+                .sameSite(isDevelopment ? "Lax" : "None")
                 .build();
     }
 
@@ -673,7 +694,7 @@ public class AuthServiceImpl implements AuthService {
 
         try {
             String token = tokenService.generateToken(byEmail.getCompanyId(), byEmail.getEmail());
-            String passwordResetLink = "http://localhost:3000/reset-password?token=" + token;
+            String passwordResetLink = frontendUrl + "/reset-password?token=" + token;
 
             // enregistrer le token
             createPasswordResetToken(byEmail.getCompanyId(), byEmail.getEmail(), token);
