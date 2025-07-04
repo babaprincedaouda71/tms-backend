@@ -602,6 +602,15 @@ public class TrainingGroupeServiceImpl implements TrainingGroupeService {
         }
     }
 
+    @Override
+    public ResponseEntity<?> getGroupDates(Long groupId) {
+        log.info("get group dates");
+        TrainingGroupe trainingGroupe = trainingGroupeRepository.findById(groupId).orElseThrow(() -> new TrainingGroupeNotFoundException("Group not found", null));
+
+        List<String> dates = trainingGroupe.getDates();
+        return ResponseEntity.ok(dates);
+    }
+
     /**
      * Valide les données d'entrée pour l'annulation de formation
      */
