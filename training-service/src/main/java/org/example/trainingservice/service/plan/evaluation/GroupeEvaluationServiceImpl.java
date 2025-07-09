@@ -10,18 +10,23 @@ import org.example.trainingservice.entity.campaign.Questionnaire;
 import org.example.trainingservice.entity.plan.Training;
 import org.example.trainingservice.entity.plan.TrainingGroupe;
 import org.example.trainingservice.entity.plan.evaluation.GroupeEvaluation;
+import org.example.trainingservice.entity.plan.f4.EvaluationQRToken;
 import org.example.trainingservice.enums.GroupeEvaluationStatusEnums;
 import org.example.trainingservice.repository.evaluation.QuestionnaireRepository;
 import org.example.trainingservice.repository.plan.TrainingGroupeRepository;
 import org.example.trainingservice.repository.plan.TrainingRepository;
 import org.example.trainingservice.repository.plan.evaluation.GroupeEvaluationRepo;
+import org.example.trainingservice.repository.plan.f4.EvaluationQRTokenRepository;
 import org.example.trainingservice.service.plan.f4.PublicEvaluationService;
 import org.example.trainingservice.utils.GroupeEvaluationUtilMethods;
 import org.example.trainingservice.utils.SecurityUtils;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -32,14 +37,16 @@ public class GroupeEvaluationServiceImpl implements GroupeEvaluationService {
     private final QuestionnaireRepository questionnaireRepository;
     private final TrainingRepository trainingRepository;
     private final PublicEvaluationService publicEvaluationService;
+    private final EvaluationQRTokenRepository qrTokenRepository;
 
-    public GroupeEvaluationServiceImpl(GroupeEvaluationRepo groupeEvaluationRepo, TrainingGroupeRepository trainingGroupeRepository, AuthServiceClient authServiceClient, QuestionnaireRepository questionnaireRepository, TrainingRepository trainingRepository, PublicEvaluationService publicEvaluationService) {
+    public GroupeEvaluationServiceImpl(GroupeEvaluationRepo groupeEvaluationRepo, TrainingGroupeRepository trainingGroupeRepository, AuthServiceClient authServiceClient, QuestionnaireRepository questionnaireRepository, TrainingRepository trainingRepository, PublicEvaluationService publicEvaluationService, EvaluationQRTokenRepository qrTokenRepository) {
         this.groupeEvaluationRepo = groupeEvaluationRepo;
         this.trainingGroupeRepository = trainingGroupeRepository;
         this.authServiceClient = authServiceClient;
         this.questionnaireRepository = questionnaireRepository;
         this.trainingRepository = trainingRepository;
         this.publicEvaluationService = publicEvaluationService;
+        this.qrTokenRepository = qrTokenRepository;
     }
 
     @Override
@@ -70,8 +77,7 @@ public class GroupeEvaluationServiceImpl implements GroupeEvaluationService {
                 List<Participant> participants = authServiceClient.getParticipants(new ArrayList<>(userGroupIds));
                 log.info("Finished fetching participants");
                 return participants;
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 log.error("Error fetching participants", e);
                 return List.of();
             }
@@ -131,13 +137,100 @@ public class GroupeEvaluationServiceImpl implements GroupeEvaluationService {
                     }
                 }
                 log.info("Finished updating groupe evaluation status");
-            }
-            else {
+            } else {
                 log.warn("Evaluation not found with id : {}", evaluationId);
             }
-        }
-        else {
+        } else {
             log.warn("Evaluation id or status are null or empty");
+        }
+    }
+
+    @Override
+    public ResponseEntity<?> getGroupeEvaluationForQuestionnaire(UUID groupeEvaluationId) {
+        log.info("Récupération des détails pour génération questionnaire: {}", groupeEvaluationId);
+
+        try {
+            Optional<GroupeEvaluation> groupeEvaluationOpt = groupeEvaluationRepo.findById(groupeEvaluationId);
+
+            if (groupeEvaluationOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            GroupeEvaluation groupeEvaluation = groupeEvaluationOpt.get();
+
+            // Vérifier les permissions d'accès (companyId)
+            if (!groupeEvaluation.getCompanyId().equals(SecurityUtils.getCurrentCompanyId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            // Créer le DTO de réponse
+            Map<String, Object> response = new HashMap<>();
+            response.put("id", groupeEvaluation.getId());
+            response.put("label", groupeEvaluation.getLabel());
+            response.put("type", groupeEvaluation.getType());
+            response.put("status", groupeEvaluation.getStatus().getDescription());
+            response.put("questionnaireId", groupeEvaluation.getQuestionnaire().getId());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Erreur lors de la récupération de la GroupeEvaluation: {}", groupeEvaluationId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Erreur interne du serveur"));
+        }
+    }
+
+    @Override
+    public ResponseEntity<?> getQRTokensForEvaluation(UUID groupeEvaluationId) {
+        log.info("Récupération des tokens QR pour l'évaluation: {}", groupeEvaluationId);
+
+        try {
+            // Vérifier que l'évaluation existe et appartient à l'entreprise
+            Optional<GroupeEvaluation> groupeEvaluationOpt = groupeEvaluationRepo.findById(groupeEvaluationId);
+
+            if (groupeEvaluationOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            GroupeEvaluation groupeEvaluation = groupeEvaluationOpt.get();
+
+            if (!groupeEvaluation.getCompanyId().equals(SecurityUtils.getCurrentCompanyId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            // Vérifier que l'évaluation est publiée
+            if (groupeEvaluation.getStatus() != GroupeEvaluationStatusEnums.PUBLISHED) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "L'évaluation doit être publiée avant de générer les questionnaires"));
+            }
+
+            // Récupérer les tokens QR
+            List<EvaluationQRToken> qrTokens = qrTokenRepository.findByGroupeEvaluationIdOrderByCreatedDateDesc(groupeEvaluationId);
+
+            if (qrTokens.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "Aucun token QR trouvé. Veuillez republier l'évaluation."));
+            }
+
+            // Convertir en DTOs
+            List<Map<String, Object>> tokenDtos = qrTokens.stream()
+                    .map(token -> {
+                        Map<String, Object> dto = new HashMap<>();
+                        dto.put("token", token.getToken());
+                        dto.put("participantId", token.getParticipantId());
+                        dto.put("participantFullName", token.getParticipantFullName());
+                        dto.put("isUsed", token.getIsUsed());
+                        dto.put("createdDate", token.getCreatedDate());
+                        return dto;
+                    })
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(tokenDtos);
+
+        } catch (Exception e) {
+            log.error("Erreur lors de la récupération des tokens QR: {}", groupeEvaluationId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Erreur interne du serveur"));
         }
     }
 }

@@ -22,4 +22,6 @@ public interface QuestionnaireService {
     ResponseEntity<?> updateStatus(UUID id, UpdateQuestionnaireStatusDto updateQuestionnaireStatusDto);
 
     ResponseEntity<?> deleteQuestionnaire(UUID id);
+
+    ResponseEntity<?> getQuestionnaireWithQuestions(UUID questionnaireId);
 }

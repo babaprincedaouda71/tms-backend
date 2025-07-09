@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -210,6 +211,54 @@ public class QuestionnaireServiceImpl implements QuestionnaireService {
         Questionnaire questionnaire = questionnaireRepository.findById(id).orElseThrow(RuntimeException::new);
         questionnaireRepository.delete(questionnaire);
         return ResponseEntity.ok().build();
+    }
+
+    @Override
+    public ResponseEntity<?> getQuestionnaireWithQuestions(UUID questionnaireId) {
+        log.info("Récupération du questionnaire complet: {}", questionnaireId);
+
+        try {
+            // Utiliser la méthode existante qui charge les questions
+            Optional<Questionnaire> questionnaireOpt = questionnaireRepository
+                    .findByCompanyIdAndIdWithQuestions(SecurityUtils.getCurrentCompanyId(), questionnaireId);
+
+            if (questionnaireOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            Questionnaire questionnaire = questionnaireOpt.get();
+
+            // Convertir en DTO
+            Map<String, Object> response = new HashMap<>();
+            response.put("id", questionnaire.getId());
+            response.put("title", questionnaire.getTitle());
+            response.put("description", questionnaire.getDescription());
+            response.put("type", questionnaire.getType());
+
+            // Convertir les questions
+            List<Map<String, Object>> questionDtos = questionnaire.getQuestions().stream()
+                    .map(question -> {
+                        Map<String, Object> dto = new HashMap<>();
+                        dto.put("id", question.getId());
+                        dto.put("type", question.getType());
+                        dto.put("text", question.getText());
+                        dto.put("comment", question.getComment());
+                        dto.put("options", question.getOptions());
+                        dto.put("levels", question.getLevels());
+                        dto.put("required", true); // Toutes les questions sont obligatoires
+                        return dto;
+                    })
+                    .collect(Collectors.toList());
+
+            response.put("questions", questionDtos);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Erreur lors de la récupération du questionnaire: {}", questionnaireId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Erreur interne du serveur"));
+        }
     }
 
     private void buildQuestions(Long currentCompanyId, Questionnaire questionnaireToUpdate, List<AddQuestionDto> questionsDtoList, List<Question> newQuestions) {

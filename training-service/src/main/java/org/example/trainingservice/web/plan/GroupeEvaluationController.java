@@ -1,5 +1,6 @@
 package org.example.trainingservice.web.plan;
 
+import lombok.extern.slf4j.Slf4j;
 import org.example.trainingservice.dto.evaluation.Participant;
 import org.example.trainingservice.dto.plan.evaluation.AddGroupeEvaluationDto;
 import org.example.trainingservice.dto.plan.evaluation.GroupeEvaluationDto;
@@ -12,6 +13,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
+@Slf4j
 @RequestMapping("/api/plan/groupes/evaluations")
 public class GroupeEvaluationController {
     private final GroupeEvaluationService groupeEvaluationService;
@@ -45,5 +47,21 @@ public class GroupeEvaluationController {
     public ResponseEntity<?> updateStatus(@RequestBody UpdateGroupeEvaluationStatusDto dto) {
         groupeEvaluationService.updateStatus(dto);
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Get groupe evaluation infos for f4
+     */
+    @GetMapping("/get/groupe-evaluation/{groupeEvaluationId}")
+    public ResponseEntity<?> getGroupeEvaluationForQuestionnaire(@PathVariable UUID groupeEvaluationId) {
+        return groupeEvaluationService.getGroupeEvaluationForQuestionnaire(groupeEvaluationId);
+    }
+
+    /**
+     * Récupérer le token pour le qr code
+     */
+    @GetMapping("/get/qr-tokens/{groupeEvaluationId}")
+    public ResponseEntity<?> getQRTokensForEvaluation(@PathVariable UUID groupeEvaluationId) {
+        return groupeEvaluationService.getQRTokensForEvaluation(groupeEvaluationId);
     }
 }

@@ -71,6 +71,15 @@ public class EvaluationController {
         return questionnaireService.deleteQuestionnaire(id);
     }
 
+    /**
+     * Récupérer un questionnaire complet avec ses questions
+     */
+    @GetMapping("/questionnaire/{questionnaireId}")
+    public ResponseEntity<?> getQuestionnaireWithQuestions(
+            @PathVariable UUID questionnaireId) {
+        return questionnaireService.getQuestionnaireWithQuestions(questionnaireId);
+    }
+
     /*
      * Campaign api
      * */
