@@ -4,8 +4,8 @@ import lombok.Getter;
 
 @Getter
 public enum AttendanceStatus {
-    ABSENT("absent"),
-    PRESENT("présent");
+    ABSENT("Absent"),
+    PRESENT("Présent");
 
     private final String description;
 
@@ -13,7 +13,4 @@ public enum AttendanceStatus {
         this.description = description;
     }
 
-    public String getDescription() {
-        return description;
-    }
 }

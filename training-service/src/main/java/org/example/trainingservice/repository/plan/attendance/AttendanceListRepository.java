@@ -98,4 +98,13 @@ public interface AttendanceListRepository extends JpaRepository<AttendanceList, 
             @Param("attendanceListId") UUID attendanceListId,
             @Param("pdfPath") String pdfPath
     );
+
+    /**
+     * Trouver une liste de présence pour un groupe et une date spécifiques.
+     * Idéal car on s'attend à un seul résultat.
+     */
+    Optional<AttendanceList> findByTrainingGroupeIdAndAttendanceDate(
+            @Param("groupId") Long groupId,
+            @Param("attendanceDate") LocalDate attendanceDate
+    );
 }

@@ -58,4 +58,9 @@ public interface AttendanceService {
      * Supprime une liste de présence
      */
     ResponseEntity<?> deleteAttendanceList(String attendanceListId);
+
+    /**
+     * Récuperer la liste de présence en fonction de la date
+     */
+    ResponseEntity<?> getAttendanceListPerDate(GetAttendancePerDateDto getAttendancePerDateDto);
 }

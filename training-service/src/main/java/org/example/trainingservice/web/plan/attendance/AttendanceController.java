@@ -3,6 +3,7 @@ package org.example.trainingservice.web.plan.attendance;
 import lombok.extern.slf4j.Slf4j;
 import org.example.trainingservice.dto.plan.attendance.AttendanceListExistsDto;
 import org.example.trainingservice.dto.plan.attendance.AttendanceListSummaryDto;
+import org.example.trainingservice.dto.plan.attendance.GetAttendancePerDateDto;
 import org.example.trainingservice.dto.plan.attendance.SaveAttendanceListRequest;
 import org.example.trainingservice.service.plan.attendance.AttendanceService;
 import org.springframework.http.ResponseEntity;
@@ -113,5 +114,13 @@ public class AttendanceController {
     public ResponseEntity<?> deleteAttendanceList(@PathVariable String attendanceListId) {
         log.info("Deleting attendance list: {}", attendanceListId);
         return attendanceService.deleteAttendanceList(attendanceListId);
+    }
+
+    /**
+     * Récuperer la liste de présence en fonction de la date
+     */
+    @PostMapping("/get-list-per-date")
+    public ResponseEntity<?> getAttendanceListPerDate(@RequestBody GetAttendancePerDateDto getAttendancePerDateDto) {
+        return attendanceService.getAttendanceListPerDate(getAttendancePerDateDto);
     }
 }

@@ -132,6 +132,8 @@ public class EvaluationController {
         return teamEvaluationsService.sendEvaluationToAdmin(id, sendEvaluationToAdminDto);
     }
 
+
+    // TODO :
     @GetMapping("/admin/groupe-evaluation-details/{groupeEvaluationId}")
     public ResponseEntity<?> getAdminGroupeEvaluationDetails(@PathVariable UUID groupeEvaluationId) {
         log.info("Admin requesting groupe evaluation details for groupeEvaluationId {}", groupeEvaluationId);

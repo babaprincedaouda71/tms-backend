@@ -16,6 +16,7 @@ import org.example.trainingservice.repository.plan.TrainingGroupeRepository;
 import org.example.trainingservice.repository.plan.attendance.AttendanceListRepository;
 import org.example.trainingservice.repository.plan.attendance.AttendanceRecordRepository;
 import org.example.trainingservice.service.plan.FileStorageService;
+import org.example.trainingservice.utils.AttendanceUtilMethods;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -367,6 +368,30 @@ public class AttendanceServiceImpl implements AttendanceService {
             return ResponseEntity.internalServerError()
                     .body("Erreur lors de la suppression de la liste de présence");
         }
+    }
+
+    @Override
+    @Transactional
+    public ResponseEntity<?> getAttendanceListPerDate(GetAttendancePerDateDto getAttendancePerDateDto) {
+        log.info("Getting attendance list per date");
+
+        Long groupId = getAttendancePerDateDto.getGroupId();
+        String date = getAttendancePerDateDto.getDate();
+
+        LocalDate attendanceDate = LocalDate.parse(date);
+
+        Optional<AttendanceList> byTrainingGroupeIdAndAttendanceDate = attendanceListRepository.findByTrainingGroupeIdAndAttendanceDate(groupId, attendanceDate);
+        if (byTrainingGroupeIdAndAttendanceDate.isPresent()) {
+            AttendanceList attendanceList = byTrainingGroupeIdAndAttendanceDate.get();
+
+            List<AttendanceRecord> attendanceRecords = attendanceList.getAttendanceRecords();
+
+            List<AttendanceListPerDateDto> attendanceListPerDateDtos = AttendanceUtilMethods.mapToAttendanceListDtos(attendanceRecords);
+
+            return ResponseEntity.ok(attendanceListPerDateDtos);
+        }
+
+        return ResponseEntity.notFound().build();
     }
 
 

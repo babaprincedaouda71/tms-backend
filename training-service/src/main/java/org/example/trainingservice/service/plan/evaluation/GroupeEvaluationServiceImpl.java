@@ -15,6 +15,7 @@ import org.example.trainingservice.repository.evaluation.QuestionnaireRepository
 import org.example.trainingservice.repository.plan.TrainingGroupeRepository;
 import org.example.trainingservice.repository.plan.TrainingRepository;
 import org.example.trainingservice.repository.plan.evaluation.GroupeEvaluationRepo;
+import org.example.trainingservice.service.plan.f4.PublicEvaluationService;
 import org.example.trainingservice.utils.GroupeEvaluationUtilMethods;
 import org.example.trainingservice.utils.SecurityUtils;
 import org.springframework.stereotype.Service;
@@ -30,13 +31,15 @@ public class GroupeEvaluationServiceImpl implements GroupeEvaluationService {
     private final AuthServiceClient authServiceClient;
     private final QuestionnaireRepository questionnaireRepository;
     private final TrainingRepository trainingRepository;
+    private final PublicEvaluationService publicEvaluationService;
 
-    public GroupeEvaluationServiceImpl(GroupeEvaluationRepo groupeEvaluationRepo, TrainingGroupeRepository trainingGroupeRepository, AuthServiceClient authServiceClient, QuestionnaireRepository questionnaireRepository, TrainingRepository trainingRepository) {
+    public GroupeEvaluationServiceImpl(GroupeEvaluationRepo groupeEvaluationRepo, TrainingGroupeRepository trainingGroupeRepository, AuthServiceClient authServiceClient, QuestionnaireRepository questionnaireRepository, TrainingRepository trainingRepository, PublicEvaluationService publicEvaluationService) {
         this.groupeEvaluationRepo = groupeEvaluationRepo;
         this.trainingGroupeRepository = trainingGroupeRepository;
         this.authServiceClient = authServiceClient;
         this.questionnaireRepository = questionnaireRepository;
         this.trainingRepository = trainingRepository;
+        this.publicEvaluationService = publicEvaluationService;
     }
 
     @Override
@@ -115,6 +118,18 @@ public class GroupeEvaluationServiceImpl implements GroupeEvaluationService {
                 GroupeEvaluation groupeEvaluation = byId.get();
                 groupeEvaluation.setStatus(GroupeEvaluationStatusEnums.fromDescription(statusString));
                 groupeEvaluationRepo.save(groupeEvaluation);
+
+                if (Objects.equals(groupeEvaluation.getType(), "Formulaire F4")) {
+                    try {
+                        log.info("Generating QR tokens for published evaluation: {}", evaluationId);
+                        publicEvaluationService.generateQRTokensForEvaluation(evaluationId);
+                        log.info("QR tokens generated successfully for evaluation: {}", evaluationId);
+                    } catch (Exception e) {
+                        log.error("Error generating QR tokens for evaluation: {}", evaluationId, e);
+                        // On peut choisir de relancer l'exception ou juste logger l'erreur
+                        // selon les besoins métier
+                    }
+                }
                 log.info("Finished updating groupe evaluation status");
             }
             else {
