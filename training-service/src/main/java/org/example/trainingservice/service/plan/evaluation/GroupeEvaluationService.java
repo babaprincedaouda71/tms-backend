@@ -21,4 +21,6 @@ public interface GroupeEvaluationService {
     ResponseEntity<?> getGroupeEvaluationForQuestionnaire(UUID groupeEvaluationId);
 
     ResponseEntity<?> getQRTokensForEvaluation(UUID groupeEvaluationId);
+
+    ResponseEntity<?> getParticipantResponses(Long participantId, UUID groupeEvaluationId);
 }

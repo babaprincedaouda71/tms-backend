@@ -6,13 +6,16 @@ import org.example.trainingservice.dto.evaluation.Participant;
 import org.example.trainingservice.dto.plan.evaluation.AddGroupeEvaluationDto;
 import org.example.trainingservice.dto.plan.evaluation.GroupeEvaluationDto;
 import org.example.trainingservice.dto.plan.evaluation.UpdateGroupeEvaluationStatusDto;
+import org.example.trainingservice.entity.campaign.Question;
 import org.example.trainingservice.entity.campaign.Questionnaire;
+import org.example.trainingservice.entity.campaign.UserResponse;
 import org.example.trainingservice.entity.plan.Training;
 import org.example.trainingservice.entity.plan.TrainingGroupe;
 import org.example.trainingservice.entity.plan.evaluation.GroupeEvaluation;
 import org.example.trainingservice.entity.plan.f4.EvaluationQRToken;
 import org.example.trainingservice.enums.GroupeEvaluationStatusEnums;
 import org.example.trainingservice.repository.evaluation.QuestionnaireRepository;
+import org.example.trainingservice.repository.evaluation.UserResponseRepository;
 import org.example.trainingservice.repository.plan.TrainingGroupeRepository;
 import org.example.trainingservice.repository.plan.TrainingRepository;
 import org.example.trainingservice.repository.plan.evaluation.GroupeEvaluationRepo;
@@ -38,8 +41,9 @@ public class GroupeEvaluationServiceImpl implements GroupeEvaluationService {
     private final TrainingRepository trainingRepository;
     private final PublicEvaluationService publicEvaluationService;
     private final EvaluationQRTokenRepository qrTokenRepository;
+    private final UserResponseRepository userResponseRepository;
 
-    public GroupeEvaluationServiceImpl(GroupeEvaluationRepo groupeEvaluationRepo, TrainingGroupeRepository trainingGroupeRepository, AuthServiceClient authServiceClient, QuestionnaireRepository questionnaireRepository, TrainingRepository trainingRepository, PublicEvaluationService publicEvaluationService, EvaluationQRTokenRepository qrTokenRepository) {
+    public GroupeEvaluationServiceImpl(GroupeEvaluationRepo groupeEvaluationRepo, TrainingGroupeRepository trainingGroupeRepository, AuthServiceClient authServiceClient, QuestionnaireRepository questionnaireRepository, TrainingRepository trainingRepository, PublicEvaluationService publicEvaluationService, EvaluationQRTokenRepository qrTokenRepository, UserResponseRepository userResponseRepository) {
         this.groupeEvaluationRepo = groupeEvaluationRepo;
         this.trainingGroupeRepository = trainingGroupeRepository;
         this.authServiceClient = authServiceClient;
@@ -47,6 +51,7 @@ public class GroupeEvaluationServiceImpl implements GroupeEvaluationService {
         this.trainingRepository = trainingRepository;
         this.publicEvaluationService = publicEvaluationService;
         this.qrTokenRepository = qrTokenRepository;
+        this.userResponseRepository = userResponseRepository;
     }
 
     @Override
@@ -232,5 +237,100 @@ public class GroupeEvaluationServiceImpl implements GroupeEvaluationService {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Erreur interne du serveur"));
         }
+    }
+
+
+    /*
+     * Méthode pour récupérer les réponses du participant
+     * */
+    @Override
+    public ResponseEntity<?> getParticipantResponses(Long participantId, UUID groupeEvaluationId) {
+        log.info("Getting participant responses for participantId: {} and groupeEvaluationId: {}",
+                participantId, groupeEvaluationId);
+
+        try {
+            // Vérifier que l'évaluation existe et appartient à l'entreprise
+            Optional<GroupeEvaluation> groupeEvaluationOpt = groupeEvaluationRepo.findById(groupeEvaluationId);
+
+            if (groupeEvaluationOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            GroupeEvaluation groupeEvaluation = groupeEvaluationOpt.get();
+
+            if (!groupeEvaluation.getCompanyId().equals(SecurityUtils.getCurrentCompanyId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            // Vérifier que le participant fait partie de cette évaluation
+            if (!groupeEvaluation.getParticipantIds().contains(participantId)) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Le participant ne fait pas partie de cette évaluation"));
+            }
+
+            // Récupérer les réponses du participant
+            List<UserResponse> userResponses = userResponseRepository
+                    .findByUserIdAndGroupeEvaluationId(participantId, groupeEvaluationId);
+
+            // Récupérer les questions du questionnaire
+            Questionnaire questionnaire = groupeEvaluation.getQuestionnaire();
+            List<Question> questions = questionnaire.getQuestions();
+
+            // Calculer le progrès
+            int progress = calculateProgress(userResponses, questions);
+
+            // Construire la réponse similaire à UserEvaluationProps
+            Map<String, Object> evaluationData = new HashMap<>();
+            evaluationData.put("id", groupeEvaluationId.toString());
+            evaluationData.put("title", groupeEvaluation.getLabel());
+            evaluationData.put("type", groupeEvaluation.getType());
+            evaluationData.put("description", questionnaire.getDescription());
+            evaluationData.put("progress", progress);
+            evaluationData.put("questions", convertQuestionsToProps(questions));
+            evaluationData.put("responses", userResponses);
+
+            return ResponseEntity.ok(evaluationData);
+
+        } catch (Exception e) {
+            log.error("Error getting participant responses", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Erreur lors de la récupération des réponses"));
+        }
+    }
+
+// Méthodes utilitaires
+
+    private int calculateProgress(List<UserResponse> responses, List<Question> questions) {
+        if (questions.isEmpty()) {
+            return 0;
+        }
+
+        Set<UUID> answeredQuestionIds = responses.stream()
+                .map(UserResponse::getQuestionId)
+                .collect(Collectors.toSet());
+
+        long answeredCount = questions.stream()
+                .map(Question::getId)
+                .filter(answeredQuestionIds::contains)
+                .count();
+
+        return (int) ((answeredCount * 100) / questions.size());
+    }
+
+    private List<Map<String, Object>> convertQuestionsToProps(List<Question> questions) {
+        return questions.stream()
+                .map(question -> {
+                    Map<String, Object> questionMap = new HashMap<>();
+                    questionMap.put("id", question.getId().toString());
+                    questionMap.put("companyId", question.getCompanyId().intValue());
+                    questionMap.put("type", question.getType());
+                    questionMap.put("text", question.getText());
+                    questionMap.put("options", question.getOptions());
+                    questionMap.put("levels", question.getLevels());
+                    questionMap.put("scoreValue", question.getScoreValue() != null ? question.getScoreValue() : 0);
+                    questionMap.put("ratingValue", question.getRatingValue() != null ? question.getRatingValue() : 0);
+                    return questionMap;
+                })
+                .collect(Collectors.toList());
     }
 }

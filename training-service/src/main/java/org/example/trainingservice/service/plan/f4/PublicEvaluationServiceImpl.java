@@ -12,6 +12,7 @@ import org.example.trainingservice.entity.plan.evaluation.GroupeEvaluation;
 import org.example.trainingservice.entity.plan.f4.EvaluationQRToken;
 import org.example.trainingservice.enums.EvaluationSource;
 import org.example.trainingservice.enums.GroupeEvaluationStatusEnums;
+import org.example.trainingservice.repository.evaluation.UserResponseRepository;
 import org.example.trainingservice.repository.plan.TrainingGroupeRepository;
 import org.example.trainingservice.repository.plan.evaluation.GroupeEvaluationRepo;
 import org.example.trainingservice.repository.plan.f4.EvaluationQRTokenRepository;
@@ -31,12 +32,14 @@ public class PublicEvaluationServiceImpl implements PublicEvaluationService {
     private final EvaluationQRTokenRepository qrTokenRepository;
     private final AuthServiceClient authServiceClient;
     private final TrainingGroupeRepository trainingGroupeRepository;
+    private final UserResponseRepository userResponseRepository;
 
-    public PublicEvaluationServiceImpl(GroupeEvaluationRepo groupeEvaluationRepo, EvaluationQRTokenRepository qrTokenRepository, AuthServiceClient authServiceClient, TrainingGroupeRepository trainingGroupeRepository) {
+    public PublicEvaluationServiceImpl(GroupeEvaluationRepo groupeEvaluationRepo, EvaluationQRTokenRepository qrTokenRepository, AuthServiceClient authServiceClient, TrainingGroupeRepository trainingGroupeRepository, UserResponseRepository userResponseRepository) {
         this.groupeEvaluationRepo = groupeEvaluationRepo;
         this.qrTokenRepository = qrTokenRepository;
         this.authServiceClient = authServiceClient;
         this.trainingGroupeRepository = trainingGroupeRepository;
+        this.userResponseRepository = userResponseRepository;
     }
 
     @Override
@@ -124,8 +127,99 @@ public class PublicEvaluationServiceImpl implements PublicEvaluationService {
     }
 
     @Override
+    @Transactional
     public ResponseEntity<SubmitResponseResultDto> submitEvaluationResponses(SubmitEvaluationResponsesDto request) {
-        return null;
+        try {
+            log.info("Submitting evaluation responses for token: {}", request.getToken());
+
+            // 1. Récupérer et valider le token
+            Optional<EvaluationQRToken> qrTokenOpt = qrTokenRepository.findByToken(request.getToken());
+
+            if (qrTokenOpt.isEmpty()) {
+                return ResponseEntity.ok(SubmitResponseResultDto.builder()
+                        .success(false)
+                        .message("Token invalide ou expiré")
+                        .errorCode("INVALID_TOKEN")
+                        .build());
+            }
+
+            EvaluationQRToken qrToken = qrTokenOpt.get();
+
+            // 2. Vérifier que le token n'a pas déjà été utilisé
+            if (qrToken.getIsUsed()) {
+                return ResponseEntity.ok(SubmitResponseResultDto.builder()
+                        .success(false)
+                        .message("Le formulaire a déjà été rempli")
+                        .errorCode("ALREADY_USED")
+                        .build());
+            }
+
+            // 3. Vérifier que le token n'est pas expiré
+            if (qrToken.isExpired()) {
+                return ResponseEntity.ok(SubmitResponseResultDto.builder()
+                        .success(false)
+                        .message("Le token a expiré")
+                        .errorCode("EXPIRED")
+                        .build());
+            }
+
+            // 4. Récupérer l'évaluation de groupe
+            GroupeEvaluation groupeEvaluation = groupeEvaluationRepo.findById(qrToken.getGroupeEvaluationId())
+                    .orElseThrow(() -> new RuntimeException("Évaluation de groupe non trouvée"));
+
+            // 5. Vérifier que l'évaluation est toujours publiée
+            if (groupeEvaluation.getStatus() != GroupeEvaluationStatusEnums.PUBLISHED) {
+                return ResponseEntity.ok(SubmitResponseResultDto.builder()
+                        .success(false)
+                        .message("Cette évaluation n'est plus disponible")
+                        .errorCode("NOT_AVAILABLE")
+                        .build());
+            }
+
+            Questionnaire questionnaire = groupeEvaluation.getQuestionnaire();
+            List<Question> questions = questionnaire.getQuestions();
+
+            // 6. Valider que toutes les questions obligatoires ont une réponse
+            boolean allQuestionsAnswered = validateAllQuestionsAnswered(questions, request.getResponses());
+            if (!allQuestionsAnswered) {
+                return ResponseEntity.ok(SubmitResponseResultDto.builder()
+                        .success(false)
+                        .message("Toutes les questions sont obligatoires")
+                        .errorCode("MISSING_REQUIRED_ANSWERS")
+                        .build());
+            }
+
+            // 7. Convertir les réponses en UserResponse
+            List<UserResponse> userResponses = convertToUserResponses(
+                    request.getResponses(),
+                    qrToken,
+                    groupeEvaluation
+            );
+
+            // 8. Sauvegarder les réponses
+            userResponseRepository.saveAll(userResponses);
+
+            // 9. Marquer le token comme utilisé
+            qrToken.markAsUsed();
+            qrTokenRepository.save(qrToken);
+
+            log.info("Successfully submitted {} responses for token: {}", userResponses.size(), request.getToken());
+
+            return ResponseEntity.ok(SubmitResponseResultDto.builder()
+                    .success(true)
+                    .message("Réponses enregistrées avec succès")
+                    .totalResponses(userResponses.size())
+                    .submissionDate(LocalDate.now().toString())
+                    .build());
+
+        } catch (Exception e) {
+            log.error("Error submitting evaluation responses for token: {}", request.getToken(), e);
+            return ResponseEntity.ok(SubmitResponseResultDto.builder()
+                    .success(false)
+                    .message("Erreur lors de l'enregistrement des réponses")
+                    .errorCode("SUBMISSION_ERROR")
+                    .build());
+        }
     }
 
     @Override
@@ -278,5 +372,36 @@ public class PublicEvaluationServiceImpl implements PublicEvaluationService {
                 .isSentToAdmin(false)
                 .evaluationSource(EvaluationSource.GROUPE_EVALUATION)
                 .build();
+    }
+
+
+    /**/
+
+    // Méthode pour convertir les réponses en UserResponse
+    private List<UserResponse> convertToUserResponses(List<EvaluationResponseDto> responses,
+                                                      EvaluationQRToken qrToken,
+                                                      GroupeEvaluation groupeEvaluation) {
+        LocalDate now = LocalDate.now();
+
+        return responses.stream()
+                .filter(response -> response.getSingleChoiceResponse() != null &&
+                        !response.getSingleChoiceResponse().trim().isEmpty())
+                .map(response -> UserResponse.builder()
+                        .companyId(qrToken.getCompanyId())
+                        .userId(qrToken.getParticipantId())
+                        .groupeEvaluationId(qrToken.getGroupeEvaluationId())
+                        .questionnaireId(groupeEvaluation.getQuestionnaire().getId())
+                        .questionId(response.getQuestionId())
+                        .responseType(response.getResponseType())
+                        .singleChoiceResponse(response.getSingleChoiceResponse())
+                        .status("Terminée")
+                        .progression(100)
+                        .startDate(now)
+                        .lastModifiedDate(now)
+                        .isSentToManager(false)
+                        .isSentToAdmin(false)
+                        .evaluationSource(EvaluationSource.GROUPE_EVALUATION)
+                        .build())
+                .collect(Collectors.toList());
     }
 }
