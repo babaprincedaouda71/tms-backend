@@ -14,6 +14,12 @@ public class CampaignEvaluationParticipantsDto {
 
     private String lastName;
 
+    private String email;
+
+    private String cin;
+
+    private String cnss;
+
     private String position;
 
     private String level;

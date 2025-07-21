@@ -3,9 +3,7 @@ package org.example.trainingservice.service.plan.evaluation;
 import lombok.extern.slf4j.Slf4j;
 import org.example.trainingservice.client.users.AuthServiceClient;
 import org.example.trainingservice.dto.evaluation.Participant;
-import org.example.trainingservice.dto.plan.evaluation.AddGroupeEvaluationDto;
-import org.example.trainingservice.dto.plan.evaluation.GroupeEvaluationDto;
-import org.example.trainingservice.dto.plan.evaluation.UpdateGroupeEvaluationStatusDto;
+import org.example.trainingservice.dto.plan.evaluation.*;
 import org.example.trainingservice.entity.campaign.Question;
 import org.example.trainingservice.entity.campaign.Questionnaire;
 import org.example.trainingservice.entity.campaign.UserResponse;
@@ -26,6 +24,7 @@ import org.example.trainingservice.utils.SecurityUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -168,6 +167,24 @@ public class GroupeEvaluationServiceImpl implements GroupeEvaluationService {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
+            // Récupérer le thème
+            UUID trainingId = groupeEvaluation.getTrainingId();
+            Optional<Training> byIdAndCompanyId = trainingRepository.findByIdAndCompanyId(trainingId, SecurityUtils.getCurrentCompanyId());
+            if (byIdAndCompanyId.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            Training training = byIdAndCompanyId.get();
+            String theme = training.getTheme();
+
+            // Récupérer les groupes
+            Long groupeId = groupeEvaluation.getGroupeId();
+            Optional<TrainingGroupe> byId = trainingGroupeRepository.findById(groupeId);
+            if (byId.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            TrainingGroupe trainingGroupe = byId.get();
+            List<String> dates = trainingGroupe.getDates();
+
             // Créer le DTO de réponse
             Map<String, Object> response = new HashMap<>();
             response.put("id", groupeEvaluation.getId());
@@ -175,6 +192,8 @@ public class GroupeEvaluationServiceImpl implements GroupeEvaluationService {
             response.put("type", groupeEvaluation.getType());
             response.put("status", groupeEvaluation.getStatus().getDescription());
             response.put("questionnaireId", groupeEvaluation.getQuestionnaire().getId());
+            response.put("theme", theme);
+            response.put("dates", dates);
 
             return ResponseEntity.ok(response);
 
@@ -296,6 +315,151 @@ public class GroupeEvaluationServiceImpl implements GroupeEvaluationService {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Erreur lors de la récupération des réponses"));
         }
+    }
+
+    @Transactional
+    @Override
+    public ResponseEntity<?> deleteGroupeEvaluation(UUID groupeEvaluationId) {
+        log.info("Tentative de suppression de l'évaluation de groupe avec l'ID : {}", groupeEvaluationId);
+
+        try {
+            // 1. Vérifier que l'évaluation existe
+            Optional<GroupeEvaluation> groupeEvaluationOpt = groupeEvaluationRepo.findById(groupeEvaluationId);
+
+            if (groupeEvaluationOpt.isEmpty()) {
+                log.warn("Évaluation de groupe non trouvée avec l'ID : {}", groupeEvaluationId);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "Évaluation non trouvée"));
+            }
+
+            GroupeEvaluation groupeEvaluation = groupeEvaluationOpt.get();
+
+            // 2. Vérifier les permissions (entreprise)
+            if (!groupeEvaluation.getCompanyId().equals(SecurityUtils.getCurrentCompanyId())) {
+                log.warn("Tentative de suppression non autorisée pour l'entreprise {} sur l'évaluation {}",
+                        SecurityUtils.getCurrentCompanyId(), groupeEvaluationId);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "Accès non autorisé"));
+            }
+
+            // 3. Pas de restriction selon le statut - suppression autorisée pour tous les statuts
+            log.info("Suppression autorisée pour l'évaluation {} avec le statut : {}",
+                    groupeEvaluationId, groupeEvaluation.getStatus());
+
+            // 4. Supprimer les données associées en cascade
+
+            // 4.1 Supprimer les tokens QR associés
+            try {
+                qrTokenRepository.deleteByGroupeEvaluationId(groupeEvaluationId);
+                log.info("Tokens QR supprimés pour l'évaluation : {}", groupeEvaluationId);
+            } catch (Exception e) {
+                log.error("Erreur lors de la suppression des tokens QR pour l'évaluation : {}", groupeEvaluationId, e);
+                // Continuer le processus même si la suppression des tokens échoue
+            }
+
+            // 4.2 Supprimer les réponses utilisateurs associées
+            try {
+                List<UserResponse> userResponses = userResponseRepository.findByGroupeEvaluationId(groupeEvaluationId);
+                if (!userResponses.isEmpty()) {
+                    userResponseRepository.deleteAll(userResponses);
+                    log.info("Réponses utilisateurs supprimées ({} réponses) pour l'évaluation : {}",
+                            userResponses.size(), groupeEvaluationId);
+                }
+            } catch (Exception e) {
+                log.error("Erreur lors de la suppression des réponses utilisateurs pour l'évaluation : {}",
+                        groupeEvaluationId, e);
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(Map.of("error", "Erreur lors de la suppression des données associées"));
+            }
+
+            // 5. Supprimer l'évaluation elle-même
+            groupeEvaluationRepo.delete(groupeEvaluation);
+
+            log.info("Évaluation de groupe supprimée avec succès : {}", groupeEvaluationId);
+
+            return ResponseEntity.ok()
+                    .body(Map.of("message", "Évaluation supprimée avec succès"));
+
+        } catch (Exception e) {
+            log.error("Erreur inattendue lors de la suppression de l'évaluation : {}", groupeEvaluationId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Erreur interne du serveur"));
+        }
+    }
+
+    @Override
+    public GroupeEvaluationEditDetailsDto getGroupeEvaluationEditDetails(UUID evaluationId) {
+        log.info("getGroupeEvaluationEditDetails evaluationId: {}", evaluationId);
+
+        Optional<GroupeEvaluation> evaluationOpt = groupeEvaluationRepo.findById(evaluationId);
+
+        if (evaluationOpt.isEmpty()) {
+            log.warn("GroupeEvaluation not found with id: {}", evaluationId);
+            throw new RuntimeException("Évaluation non trouvée");
+        }
+
+        GroupeEvaluation evaluation = evaluationOpt.get();
+
+        // Vérifier les permissions (companyId)
+        if (!evaluation.getCompanyId().equals(SecurityUtils.getCurrentCompanyId())) {
+            log.warn("Access denied for evaluation: {}", evaluationId);
+            throw new RuntimeException("Accès refusé");
+        }
+
+        return GroupeEvaluationEditDetailsDto.builder()
+                .id(evaluation.getId())
+                .label(evaluation.getLabel())
+                .type(evaluation.getType())
+                .description(evaluation.getDescription())
+                .creationDate(evaluation.getCreationDate())
+                .status(evaluation.getStatus().getDescription())
+                .questionnaireId(evaluation.getQuestionnaire().getId())
+                .participantIds(evaluation.getParticipantIds())
+                .build();
+    }
+
+    @Override
+    public void updateGroupeEvaluation(UUID evaluationId, UpdateGroupeEvaluationDto updateDto) {
+        log.info("updateGroupeEvaluation evaluationId: {}, updateDto: {}", evaluationId, updateDto);
+
+        Optional<GroupeEvaluation> evaluationOpt = groupeEvaluationRepo.findById(evaluationId);
+
+        if (evaluationOpt.isEmpty()) {
+            log.warn("GroupeEvaluation not found with id: {}", evaluationId);
+            throw new RuntimeException("Évaluation non trouvée");
+        }
+
+        GroupeEvaluation evaluation = evaluationOpt.get();
+
+        // Vérifier les permissions
+        if (!evaluation.getCompanyId().equals(SecurityUtils.getCurrentCompanyId())) {
+            log.warn("Access denied for evaluation: {}", evaluationId);
+            throw new RuntimeException("Accès refusé");
+        }
+
+        // Vérifier que l'évaluation est modifiable (statut = DRAFT)
+        if (evaluation.getStatus() != GroupeEvaluationStatusEnums.DRAFT) {
+            log.warn("Cannot update evaluation with status: {}", evaluation.getStatus());
+            throw new RuntimeException("Seules les évaluations en brouillon peuvent être modifiées");
+        }
+
+        // Vérifier que le questionnaire existe
+        UUID questionnaireId = updateDto.getQuestionnaireId();
+        Optional<Questionnaire> questionnaireOpt = questionnaireRepository.findById(questionnaireId);
+        if (questionnaireOpt.isEmpty()) {
+            log.warn("Questionnaire not found with id: {}", questionnaireId);
+            throw new RuntimeException("Questionnaire non trouvé");
+        }
+
+        // Mettre à jour les champs
+        evaluation.setLabel(updateDto.getLabel());
+        evaluation.setType(updateDto.getType());
+        evaluation.setQuestionnaire(questionnaireOpt.get());
+        evaluation.setParticipantIds(updateDto.getParticipantIds());
+        evaluation.setModificationDate(LocalDate.now());
+
+        groupeEvaluationRepo.save(evaluation);
+        log.info("GroupeEvaluation updated successfully: {}", evaluationId);
     }
 
 // Méthodes utilitaires

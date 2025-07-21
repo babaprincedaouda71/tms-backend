@@ -1117,10 +1117,18 @@ public class TeamEvaluationsServiceImpl implements TeamEvaluationsService {
             // ✅ INCHANGÉ : Récupérer les détails de l'utilisateur
             TeamEvaluationDetailsForUserDto userDetailsFromAuth = authServiceClient.getParticipant(userId);
             String name = "Utilisateur Inconnu";
+            String firstName = "Inconnu";
+            String lastName = "Inconnu";
             String position = "N/A";
             String groupe = "N/A";
+            String cin = "N/A";
+            String cnss = "N/A";
             if (userDetailsFromAuth != null) {
                 name = userDetailsFromAuth.getName();
+                firstName = userDetailsFromAuth.getFirstName();
+                lastName = userDetailsFromAuth.getLastName();
+                cin = userDetailsFromAuth.getCin();
+                cnss = userDetailsFromAuth.getCnss();
                 position = userDetailsFromAuth.getPosition();
                 groupe = userDetailsFromAuth.getGroupe();
             } else {
@@ -1142,6 +1150,10 @@ public class TeamEvaluationsServiceImpl implements TeamEvaluationsService {
             participantsDetails.add(TeamEvaluationDetailsForUserDto.builder()
                     .id(userId)
                     .name(name)
+                    .firstName(firstName)
+                    .lastName(lastName)
+                    .cin(cin)
+                    .cnss(cnss)
                     .position(position)
                     .groupe(groupe)
                     .progress(progress)

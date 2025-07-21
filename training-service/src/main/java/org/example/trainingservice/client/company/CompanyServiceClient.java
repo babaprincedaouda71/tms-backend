@@ -28,4 +28,7 @@ public interface CompanyServiceClient {
 
     @GetMapping("/api/department/getByIds")
     List<DepartmentDto> getDepartmentsByIds(@RequestParam List<Long> ids);
+
+    @GetMapping("/api/companies/getName/{id}")
+    String getCompanyName(@PathVariable Long id);
 }

@@ -8,6 +8,10 @@ import lombok.Data;
 public class TeamEvaluationDetailsForUserDto {
     private Long id;
     private String name;
+    private String firstName;
+    private String lastName;
+    private String cin;
+    private String cnss;
     private String position;
     private String groupe;
     private Integer progress;

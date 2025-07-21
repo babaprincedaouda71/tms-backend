@@ -1,18 +1,25 @@
 package org.example.trainingservice.service.plan.synthesisFile;
 
 import lombok.extern.slf4j.Slf4j;
+import org.example.trainingservice.client.company.CompanyServiceClient;
 import org.example.trainingservice.dto.plan.synthesisFile.EvaluationSyntheseDto;
 import org.example.trainingservice.dto.plan.synthesisFile.QuestionStatsDto;
 import org.example.trainingservice.entity.campaign.Question;
 import org.example.trainingservice.entity.campaign.UserResponse;
+import org.example.trainingservice.entity.plan.Training;
+import org.example.trainingservice.entity.plan.TrainingGroupe;
 import org.example.trainingservice.entity.plan.evaluation.GroupeEvaluation;
 import org.example.trainingservice.repository.evaluation.UserResponseRepository;
+import org.example.trainingservice.repository.plan.TrainingGroupeRepository;
+import org.example.trainingservice.repository.plan.TrainingRepository;
 import org.example.trainingservice.repository.plan.evaluation.GroupeEvaluationRepo;
+import org.example.trainingservice.utils.TrainingGroupeUtilMethods;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -22,11 +29,17 @@ public class EvaluationStatsServiceImpl implements EvaluationStatsService {
 
     private final GroupeEvaluationRepo groupeEvaluationRepo;
     private final UserResponseRepository userResponseRepository;
+    private final TrainingGroupeRepository trainingGroupeRepository;
+    private final TrainingRepository trainingRepository;
+    private final CompanyServiceClient companyServiceClient;
 
     public EvaluationStatsServiceImpl(GroupeEvaluationRepo groupeEvaluationRepo,
-                                      UserResponseRepository userResponseRepository) {
+                                      UserResponseRepository userResponseRepository, TrainingGroupeRepository trainingGroupeRepository, TrainingRepository trainingRepository, CompanyServiceClient companyServiceClient) {
         this.groupeEvaluationRepo = groupeEvaluationRepo;
         this.userResponseRepository = userResponseRepository;
+        this.trainingGroupeRepository = trainingGroupeRepository;
+        this.trainingRepository = trainingRepository;
+        this.companyServiceClient = companyServiceClient;
     }
 
     @Override
@@ -58,6 +71,35 @@ public class EvaluationStatsServiceImpl implements EvaluationStatsService {
                     groupeEvaluation.getParticipantIds().size()
             );
 
+            // Récuperer les infos concernant le groupe
+            Long groupeId = groupeEvaluation.getGroupeId();
+            Optional<TrainingGroupe> byId = trainingGroupeRepository.findById(groupeId);
+            if (byId.isEmpty()) {
+                throw new RuntimeException("Le groupe n'existe pas");
+            }
+            TrainingGroupe trainingGroupe = byId.get();
+            String trainerName = trainingGroupe.getTrainerName();
+
+            List<String> datesString = trainingGroupe.getDates();
+            LocalDate lastDate = TrainingGroupeUtilMethods.getLastDate(datesString, "yyyy-MM-dd");
+
+            Long extractedNumber = TrainingGroupeUtilMethods.extraireNumber(trainingGroupe.getName());
+
+            String ocfCorporateName = trainingGroupe.getOcf().getCorporateName();
+
+            // Récupérer les infos de formation
+            UUID trainingId = groupeEvaluation.getTrainingId();
+            Optional<Training> byId1 = trainingRepository.findById(trainingId);
+            if (byId1.isEmpty()) {
+                throw new RuntimeException("La formation n'existe pas");
+            }
+            Training training = byId1.get();
+            String theme = training.getTheme();
+
+            // Récuperer le nom de l'entreprise
+            Long companyId = trainingGroupe.getCompanyId();
+            String companyName = companyServiceClient.getCompanyName(companyId);
+
             // 5. Construire le DTO de synthèse
             return EvaluationSyntheseDto.builder()
                     .evaluationId(groupeEvaluationId)
@@ -69,6 +111,14 @@ public class EvaluationStatsServiceImpl implements EvaluationStatsService {
                     .completionPercentage(calculateCompletionPercentage(groupeEvaluation, allResponses))
                     .questionStats(questionStats)
                     .generationDate(new Date())
+                    .trainerName(trainerName)
+                    .trainingTheme(theme)
+                    .date(lastDate.toString())
+                    .location(trainingGroupe.getLocation() != null ? trainingGroupe.getLocation() : "Aucune information disponible")
+                    .city(trainingGroupe.getCity() != null ? trainingGroupe.getCity() : "Aucune information disponible")
+                    .groupeNumber(extractedNumber)
+                    .companyName(companyName)
+                    .ocf(ocfCorporateName)
                     .build();
 
         } catch (Exception e) {

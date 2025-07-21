@@ -21,4 +21,6 @@ public interface GroupeInvoiceService {
     ResponseEntity<?> getGroupeInvoiceDetails(UUID invoiceId);
 
     ResponseEntity<?> getPdf(UUID invoiceId, String fileType);
+
+    ResponseEntity<?> editGroupeInvoice(UUID invoiceId, AddGroupeInvoiceDto invoice, MultipartFile invoiceFile, MultipartFile bankRemiseFile, MultipartFile receiptFile);
 }

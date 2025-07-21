@@ -7,6 +7,10 @@ import org.example.trainingservice.dto.ocf.OCFAddOrEditGroupDto;
 import org.example.trainingservice.entity.plan.TrainingGroupe;
 import org.example.trainingservice.enums.TrainingType;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+
 public class TrainingGroupeUtilMethods {
     public static int calculateTotalParticipants(AddOrEditGroupParticipantsDto dto) {
         return dto.getManagerCount()
@@ -125,4 +129,19 @@ public class TrainingGroupeUtilMethods {
 
         return dto;
     }
+
+    public static LocalDate getLastDate(List<String> dateStrings, String format) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(format);
+
+        return dateStrings.stream()
+                .map(dateStr -> LocalDate.parse(dateStr, formatter))
+                .max(LocalDate::compareTo)
+                .orElse(null); // null si la liste est vide ou invalide
+    }
+
+    public static Long extraireNumber(String texte) {
+        String nombreStr = texte.replaceAll("[^0-9]", "");
+        return (long) Integer.parseInt(nombreStr);
+    }
+
 }

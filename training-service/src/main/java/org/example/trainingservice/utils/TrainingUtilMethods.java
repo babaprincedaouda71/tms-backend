@@ -10,6 +10,20 @@ import java.util.stream.Collectors;
 
 public class TrainingUtilMethods {
     public static GetAllTrainingDto mapToGetAllTrainingsDto(Training training) {
+        // Récupération des dates des groupes
+        List<GetAllTrainingDto.GroupDatesDto> groupDates = null;
+
+        if (training.getGroupes() != null && !training.getGroupes().isEmpty()) {
+            groupDates = training.getGroupes().stream()
+                    .filter(groupe -> groupe.getDates() != null && !groupe.getDates().isEmpty())
+                    .map(groupe -> GetAllTrainingDto.GroupDatesDto.builder()
+                            .groupId(groupe.getId())
+                            .groupName(groupe.getName())
+                            .dates(groupe.getDates())
+                            .build())
+                    .collect(Collectors.toList());
+        }
+
         return GetAllTrainingDto.builder()
                 .id(training.getId())
                 .theme(training.getTheme())
@@ -17,6 +31,7 @@ public class TrainingUtilMethods {
                 .type(training.getType())
                 .csf(training.getCsf())
                 .status(training.getStatus().getDescription())
+                .groupDates(groupDates)
                 .build();
     }
 

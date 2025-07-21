@@ -14,6 +14,9 @@ import java.util.UUID;
 public interface TrainingRepository extends JpaRepository<Training, UUID> {
     List<Training> findByPlanId(UUID planId);
 
+    @Query("SELECT t FROM Training t LEFT JOIN FETCH t.groupes g WHERE t.plan.id = :planId")
+    List<Training> findByPlanIdWithGroupes(@Param("planId") UUID planId);
+
     Optional<Training> findByIdAndCompanyId(UUID id, Long companyId);
 
     // Méthode de repository optimisée à ajouter dans TrainingRepository

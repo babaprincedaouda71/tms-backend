@@ -1,10 +1,9 @@
 package org.example.trainingservice.service.plan.evaluation;
 
 import org.example.trainingservice.dto.evaluation.Participant;
-import org.example.trainingservice.dto.plan.evaluation.AddGroupeEvaluationDto;
-import org.example.trainingservice.dto.plan.evaluation.GroupeEvaluationDto;
-import org.example.trainingservice.dto.plan.evaluation.UpdateGroupeEvaluationStatusDto;
+import org.example.trainingservice.dto.plan.evaluation.*;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
@@ -23,4 +22,11 @@ public interface GroupeEvaluationService {
     ResponseEntity<?> getQRTokensForEvaluation(UUID groupeEvaluationId);
 
     ResponseEntity<?> getParticipantResponses(Long participantId, UUID groupeEvaluationId);
+
+    @Transactional
+    ResponseEntity<?> deleteGroupeEvaluation(UUID groupeEvaluationId);
+
+    GroupeEvaluationEditDetailsDto getGroupeEvaluationEditDetails(UUID evaluationId);
+
+    void updateGroupeEvaluation(UUID evaluationId, UpdateGroupeEvaluationDto updateDto);
 }

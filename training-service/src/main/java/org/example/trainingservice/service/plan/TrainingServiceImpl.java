@@ -46,15 +46,18 @@ public class TrainingServiceImpl implements TrainingService {
 
     @Override
     public ResponseEntity<?> getAllTrainings(UUID planId) {
-        log.info("Getting all trainings for theme: {}", planId);
-        List<Training> trainings = trainingRepository.findByPlanId(planId);
+        log.info("Getting all trainings for plan: {}", planId);
 
-        log.info("Finished getting all trainings for theme: {}", trainings.size());
+        // Utilisation de la requête optimisée avec fetch join
+        List<Training> trainings = trainingRepository.findByPlanIdWithGroupes(planId);
+
+        log.info("Finished getting all trainings for plan: {}", trainings.size());
 
         List<GetAllTrainingDto> getAllTrainingDtos = trainings.stream()
                 .map(TrainingUtilMethods::mapToGetAllTrainingsDto)
                 .toList();
-        log.info("Finished getting all trainings for theme: {}", getAllTrainingDtos.size());
+
+        log.info("Finished mapping {} trainings with group dates", getAllTrainingDtos.size());
         return ResponseEntity.ok(getAllTrainingDtos);
     }
 

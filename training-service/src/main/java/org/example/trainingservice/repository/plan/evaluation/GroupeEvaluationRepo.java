@@ -10,4 +10,5 @@ import java.util.UUID;
 @Repository
 public interface GroupeEvaluationRepo extends JpaRepository<GroupeEvaluation, UUID> {
     List<GroupeEvaluation> findAllByTrainingIdAndGroupeId(UUID trainingId, Long groupeId);
+
 }

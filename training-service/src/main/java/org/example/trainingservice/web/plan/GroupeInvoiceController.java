@@ -63,6 +63,20 @@ public class GroupeInvoiceController {
         return groupeInvoiceService.getPdf(invoiceId, fileType);
     }
 
+    @PutMapping(path = "/edit/groupeInvoice/{invoiceId}", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})
+    public ResponseEntity<?> editGroupeInvoice(
+            @PathVariable UUID invoiceId,
+            @RequestPart AddGroupeInvoiceDto invoice,
+            @RequestPart(required = false) MultipartFile invoiceFile,
+            @RequestPart(required = false) MultipartFile bankRemiseFile,
+            @RequestPart(required = false) MultipartFile receiptFile
+    ) {
+        // Validation des fichiers PDF
+        validatePdfFiles(invoiceFile, bankRemiseFile, receiptFile);
+
+        return groupeInvoiceService.editGroupeInvoice(invoiceId, invoice, invoiceFile, bankRemiseFile, receiptFile);
+    }
+
     /**
      * Validation des fichiers PDF
      */

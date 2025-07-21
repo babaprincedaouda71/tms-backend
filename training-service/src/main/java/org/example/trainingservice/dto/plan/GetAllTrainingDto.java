@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -24,4 +25,15 @@ public class GetAllTrainingDto {
     private BigDecimal budget;
 
     private String status;
+
+    // Nouvelle propriété pour les dates des groupes
+    private List<GroupDatesDto> groupDates;
+
+    @Data
+    @Builder
+    public static class GroupDatesDto {
+        private Long groupId;
+        private String groupName;
+        private List<String> dates;
+    }
 }

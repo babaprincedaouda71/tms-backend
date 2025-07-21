@@ -2,9 +2,7 @@ package org.example.trainingservice.web.plan;
 
 import lombok.extern.slf4j.Slf4j;
 import org.example.trainingservice.dto.evaluation.Participant;
-import org.example.trainingservice.dto.plan.evaluation.AddGroupeEvaluationDto;
-import org.example.trainingservice.dto.plan.evaluation.GroupeEvaluationDto;
-import org.example.trainingservice.dto.plan.evaluation.UpdateGroupeEvaluationStatusDto;
+import org.example.trainingservice.dto.plan.evaluation.*;
 import org.example.trainingservice.dto.plan.synthesisFile.EvaluationSyntheseDto;
 import org.example.trainingservice.service.plan.evaluation.GroupeEvaluationService;
 import org.example.trainingservice.service.plan.synthesisFile.EvaluationStatsService;
@@ -28,8 +26,8 @@ public class GroupeEvaluationController {
     }
 
     /*
-    * Groupe Evaluation
-    * */
+     * Groupe Evaluation
+     * */
     @GetMapping("/get/all/{trainingId}/{groupId}")
     public ResponseEntity<?> getAllGroupeEvaluations(@PathVariable UUID trainingId, @PathVariable Long groupId) {
         List<GroupeEvaluationDto> allGroupeEvaluations = groupeEvaluationService.getAllGroupeEvaluations(trainingId, groupId);
@@ -100,5 +98,54 @@ public class GroupeEvaluationController {
             @PathVariable Long participantId,
             @PathVariable UUID groupeEvaluationId) {
         return groupeEvaluationService.getParticipantResponses(participantId, groupeEvaluationId);
+    }
+
+    @DeleteMapping("/delete/{groupeEvaluationId}")
+    public ResponseEntity<?> deleteGroupeEvaluation(@PathVariable UUID groupeEvaluationId) {
+        return groupeEvaluationService.deleteGroupeEvaluation(groupeEvaluationId);
+    }
+
+    /**
+     * Récupérer les détails d'une évaluation pour l'édition
+     */
+    @GetMapping("/get/edit-details/{evaluationId}")
+    public ResponseEntity<?> getGroupeEvaluationEditDetails(@PathVariable UUID evaluationId) {
+        try {
+            log.info("Getting evaluation edit details for: {}", evaluationId);
+
+            GroupeEvaluationEditDetailsDto editDetails = groupeEvaluationService.getGroupeEvaluationEditDetails(evaluationId);
+
+            return ResponseEntity.ok(editDetails);
+
+        } catch (Exception e) {
+            log.error("Error getting evaluation edit details: {}", evaluationId, e);
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Erreur lors de la récupération des détails",
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Mettre à jour une évaluation existante
+     */
+    @PutMapping("/edit-evaluation/{evaluationId}")
+    public ResponseEntity<?> updateGroupeEvaluation(
+            @PathVariable UUID evaluationId,
+            @RequestBody UpdateGroupeEvaluationDto updateDto) {
+        try {
+            log.info("Updating evaluation: {} with data: {}", evaluationId, updateDto);
+
+            groupeEvaluationService.updateGroupeEvaluation(evaluationId, updateDto);
+
+            return ResponseEntity.ok().build();
+
+        } catch (Exception e) {
+            log.error("Error updating evaluation: {}", evaluationId, e);
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Erreur lors de la mise à jour",
+                    "message", e.getMessage()
+            ));
+        }
     }
 }

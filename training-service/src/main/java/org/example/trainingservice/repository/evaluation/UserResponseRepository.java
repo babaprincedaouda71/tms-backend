@@ -35,4 +35,6 @@ public interface UserResponseRepository extends JpaRepository<UserResponse, UUID
     List<UserResponse> findByGroupeEvaluationIdIn(Collection<UUID> groupeEvaluationIds);
 
     List<UserResponse> findByUserIdAndEvaluationSource(Long userId, EvaluationSource source);
+
+    List<UserResponse> findByGroupeEvaluationId(UUID groupeEvaluationId);
 }

@@ -91,6 +91,9 @@ public class PublicEvaluationServiceImpl implements PublicEvaluationService {
             ParticipantInfoDto participantInfo = ParticipantInfoDto.builder()
                     .participantId(qrToken.getParticipantId())
                     .fullName(qrToken.getParticipantFullName())
+                    .cin(qrToken.getParticipantCin())
+                    .cnss(qrToken.getParticipantCnss())
+                    .email(qrToken.getParticipantEmail())
                     .build();
 
             // 6. Récupérer les informations de formation
@@ -246,11 +249,17 @@ public class PublicEvaluationServiceImpl implements PublicEvaluationService {
                     .map(participantId -> {
                         Participant participant = participantMap.get(participantId);
                         String fullName = participant.getFirstName() + " " + participant.getLastName();
+                        String cin = participant.getCin();
+                        String cnss = participant.getCnss();
+                        String email = participant.getEmail();
 
                         return EvaluationQRToken.builder()
                                 .token(UUID.randomUUID().toString())
                                 .participantId(participantId)
                                 .participantFullName(fullName)
+                                .participantCin(cin)
+                                .participantCnss(cnss)
+                                .participantEmail(email)
                                 .groupeEvaluationId(groupeEvaluationId)
                                 .companyId(groupeEvaluation.getCompanyId())
                                 .build();

@@ -23,4 +23,12 @@ public class EvaluationSyntheseDto {
     private double completionPercentage;
     private List<QuestionStatsDto> questionStats;
     private Date generationDate;
+    private String location;
+    private String city;
+    private String trainerName;
+    private String date;
+    private String trainingTheme;
+    private Long groupeNumber;
+    private String companyName;
+    private String ocf;
 }

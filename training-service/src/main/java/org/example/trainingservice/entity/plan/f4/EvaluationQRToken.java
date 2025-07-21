@@ -31,6 +31,15 @@ public class EvaluationQRToken {
     @Column(nullable = true)
     private String participantFullName;
 
+    @Column(nullable = true)
+    private String participantCin;
+
+    @Column(nullable = true)
+    private String participantEmail;
+
+    @Column(nullable = true)
+    private String participantCnss;
+
     @Column(name = "groupe_evaluation_id")
     private UUID groupeEvaluationId;
 

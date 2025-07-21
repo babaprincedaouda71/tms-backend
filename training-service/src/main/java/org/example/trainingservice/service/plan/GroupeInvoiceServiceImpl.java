@@ -68,7 +68,6 @@ public class GroupeInvoiceServiceImpl implements GroupeInvoiceService {
         log.info("Ajout d'une facture pour le groupe {}", groupId);
 
         // Vérifier que le groupe existe
-        // Vérifier que le groupe existe
         TrainingGroupe trainingGroupe = trainingGroupeRepository.findById(groupId)
                 .orElseThrow(() -> new TrainingGroupeNotFoundException("Groupe de formation non trouvé avec l'ID: " + groupId, null));
 
@@ -193,6 +192,86 @@ public class GroupeInvoiceServiceImpl implements GroupeInvoiceService {
             return ResponseEntity.ok(bytes);
         }
         return ResponseEntity.notFound().build();
+    }
+
+    @Override
+    public ResponseEntity<?> editGroupeInvoice(
+            UUID invoiceId, AddGroupeInvoiceDto updateDto,
+            MultipartFile invoiceFile,
+            MultipartFile bankRemiseFile,
+            MultipartFile receiptFile
+    ) {
+        log.info("Modification de la facture {}", invoiceId);
+
+        // Vérifier que la facture existe
+        GroupeInvoice existingInvoice = groupeInvoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new RuntimeException("Facture non trouvée avec l'ID: " + invoiceId));
+
+        // Stocker les anciens noms de fichiers pour suppression si nécessaire
+        String oldInvoiceFile = existingInvoice.getInvoiceFile();
+        String oldBankRemiseFile = existingInvoice.getBankRemiseFile();
+        String oldReceiptFile = existingInvoice.getReceiptFile();
+
+        // Upload des nouveaux fichiers et gestion du remplacement
+        String newInvoiceFileName = handleFileUpdate(invoiceFile, oldInvoiceFile, "invoice");
+        String newBankRemiseFileName = handleFileUpdate(bankRemiseFile, oldBankRemiseFile, "bank-remise");
+        String newReceiptFileName = handleFileUpdate(receiptFile, oldReceiptFile, "receipt");
+
+        try {
+            // Mettre à jour les données de base
+            existingInvoice.setType(updateDto.getType());
+            existingInvoice.setDescription(updateDto.getDescription());
+            existingInvoice.setAmount(updateDto.getAmount());
+            existingInvoice.setPaymentMethod(updateDto.getPaymentMethod());
+            existingInvoice.setPaymentDate(updateDto.getPaymentDate() != null ? updateDto.getPaymentDate() : existingInvoice.getPaymentDate());
+
+            // Mettre à jour les fichiers
+            existingInvoice.setInvoiceFile(newInvoiceFileName);
+            existingInvoice.setBankRemiseFile(newBankRemiseFileName);
+            existingInvoice.setReceiptFile(newReceiptFileName);
+
+            // Sauvegarder en base
+            GroupeInvoice savedInvoice = groupeInvoiceRepository.save(existingInvoice);
+
+            log.info("Facture modifiée avec succès - ID: {}", savedInvoice.getId());
+
+            // Convertir en DTO et retourner
+            return ResponseEntity.ok(GroupeInvoiceUtilMethods.mapSingleInvoiceToDto(savedInvoice));
+
+        } catch (Exception e) {
+            // En cas d'erreur, supprimer les nouveaux fichiers uploadés
+            log.error("Erreur lors de la modification de la facture, suppression des nouveaux fichiers", e);
+            if (!newInvoiceFileName.equals(oldInvoiceFile)) {
+                deleteFileIfPresent(newInvoiceFileName);
+            }
+            if (!newBankRemiseFileName.equals(oldBankRemiseFile)) {
+                deleteFileIfPresent(newBankRemiseFileName);
+            }
+            if (!newReceiptFileName.equals(oldReceiptFile)) {
+                deleteFileIfPresent(newReceiptFileName);
+            }
+            throw new RuntimeException("Erreur lors de la modification de la facture: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Gère la mise à jour d'un fichier (upload nouveau ou conservation ancien)
+     */
+    private String handleFileUpdate(MultipartFile newFile, String oldFileName, String prefix) {
+        if (newFile != null && !newFile.isEmpty()) {
+            // Nouveau fichier fourni - uploader et supprimer l'ancien
+            String newFileName = fileStorageService.uploadFile(newFile);
+
+            // Supprimer l'ancien fichier s'il existe
+            if (oldFileName != null && !oldFileName.trim().isEmpty()) {
+                deleteFileIfPresent(oldFileName);
+            }
+
+            return newFileName;
+        } else {
+            // Pas de nouveau fichier - conserver l'ancien
+            return oldFileName;
+        }
     }
 
 

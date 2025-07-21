@@ -567,7 +567,7 @@ public class TrainingGroupeServiceImpl implements TrainingGroupeService {
             return ResponseEntity.ok(filteredParticipants);
 
         } catch (TrainingGroupeNotFoundException e) {
-            log.error("Training group not founde: {}", e.getMessage());
+            log.error("Training group not founded: {}", e.getMessage());
             throw e;
         } catch (Exception e) {
             log.error("Error while filtering participants for group {}: {}", groupId, e.getMessage(), e);

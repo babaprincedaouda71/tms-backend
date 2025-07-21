@@ -440,7 +440,16 @@ public class UserServiceImpl implements UserService {
     @Override
     public ResponseEntity<?> getTeamEvaluationParticipant(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException("Utilisateur introuvable", null));
-        TeamEvaluationDetailsForUserDto teamEvaluationDetailsForUserDto = TeamEvaluationDetailsForUserDto.builder().id(user.getId()).name(user.getFirstName() + " " + user.getLastName()).position(user.getPosition()).groupe(user.getGroupe().getName()).build();
+        TeamEvaluationDetailsForUserDto teamEvaluationDetailsForUserDto = TeamEvaluationDetailsForUserDto.builder()
+                .id(user.getId())
+                .name(user.getFirstName() + " " + user.getLastName())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .position(user.getPosition())
+                .groupe(user.getGroupe().getName())
+                .cin(user.getCin())
+                .cnss(user.getSocialSecurityNumber())
+                .build();
         return ResponseEntity.ok(teamEvaluationDetailsForUserDto);
     }
 
@@ -461,6 +470,9 @@ public class UserServiceImpl implements UserService {
                     .department(user.getDepartment())
                     .lastName(user.getLastName())
                     .firstName(user.getFirstName())
+                    .cin(user.getCin())
+                    .cnss(user.getSocialSecurityNumber())
+                    .email(user.getEmail())
                     .groupe(user.getGroupe().getName())
                     .manager(managerName).build());
         });

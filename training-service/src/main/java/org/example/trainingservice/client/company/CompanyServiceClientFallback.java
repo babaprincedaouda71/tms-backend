@@ -42,4 +42,10 @@ public class CompanyServiceClientFallback implements CompanyServiceClient {
         return List.of();
     }
 
+    @Override
+    public String getCompanyName(Long id) {
+        log.error("Error while calling getCompanyName");
+        return null;
+    }
+
 }
