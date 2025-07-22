@@ -149,6 +149,11 @@ public class TrainingServiceImpl implements TrainingService {
     }
 
     @Override
+    public ResponseEntity<?> trainingDetailForInvitation(UUID trainingId, Long groupId) {
+        return null;
+    }
+
+    @Override
     public ResponseEntity<?> getParticipantsForTrainingCancellation(UUID id) {
         log.info("Getting participants for training cancellation, training id: {}", id);
 

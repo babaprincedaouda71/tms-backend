@@ -42,6 +42,11 @@ public class TrainingController {
         return trainingService.trainingDetailForCancel(id);
     }
 
+    @GetMapping("/get/trainingDetailForInvitation/{trainingId}/{groupId}")
+    public ResponseEntity<?> trainingDetailForInvitation(@PathVariable UUID trainingId, @PathVariable Long groupId) {
+        return trainingService.trainingDetailForInvitation(trainingId, groupId);
+    }
+
     @PostMapping("/cancel/training")
     public ResponseEntity<?> cancelTraining(@RequestBody CancelTrainingDto cancelTrainingDto) {
         return trainingService.cancelTraining(cancelTrainingDto);

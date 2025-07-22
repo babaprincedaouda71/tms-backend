@@ -19,6 +19,8 @@ public interface TrainingService {
 
     ResponseEntity<?> trainingDetailForCancel(UUID id);
 
+    ResponseEntity<?> trainingDetailForInvitation(UUID trainingId, Long groupId);
+
     ResponseEntity<?> getParticipantsForTrainingCancellation(UUID id);
 
     ResponseEntity<?> cancelTraining(CancelTrainingDto cancelTrainingDto);
