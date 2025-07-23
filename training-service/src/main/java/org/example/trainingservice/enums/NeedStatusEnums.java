@@ -15,6 +15,7 @@ public enum NeedStatusEnums {
 
     /**
      * Convertit une description française en enum correspondant
+     *
      * @param description La description en français ("Brouillon" ou "Validé")
      * @return L'enum correspondant
      * @throws IllegalArgumentException si la description n'est pas reconnue
@@ -39,6 +40,7 @@ public enum NeedStatusEnums {
 
     /**
      * Vérifie si une description est valide
+     *
      * @param description La description à vérifier
      * @return true si la description est valide, false sinon
      */

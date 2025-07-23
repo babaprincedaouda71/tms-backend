@@ -11,6 +11,7 @@ import org.example.trainingservice.entity.plan.TrainingGroupe;
 import org.example.trainingservice.enums.GroupeStatusEnums;
 import org.example.trainingservice.enums.TrainingStatusEnum;
 import org.example.trainingservice.enums.TrainingType;
+import org.example.trainingservice.exceptions.TrainingGroupeNotFoundException;
 import org.example.trainingservice.exceptions.TrainingNotFoundException;
 import org.example.trainingservice.exceptions.plan.NotificationException;
 import org.example.trainingservice.exceptions.plan.ValidationException;
@@ -150,7 +151,46 @@ public class TrainingServiceImpl implements TrainingService {
 
     @Override
     public ResponseEntity<?> trainingDetailForInvitation(UUID trainingId, Long groupId) {
-        return null;
+        log.info("Getting training details for invitation - trainingId: {}, groupId: {}", trainingId, groupId);
+
+        try {
+            // 1. Récupération de la formation avec vérification d'existence
+            Training training = trainingRepository.findById(trainingId)
+                    .orElseThrow(() -> new TrainingNotFoundException("Training not found with id: " + trainingId, null));
+
+            // 2. Récupération du groupe spécifique
+            TrainingGroupe targetGroup = training.getGroupes().stream()
+                    .filter(groupe -> groupe.getId().equals(groupId))
+                    .findFirst()
+                    .orElseThrow(() -> new TrainingGroupeNotFoundException(
+                            "Training group not found with id: " + groupId + " for training: " + trainingId, null));
+
+            // 3. Détermination de la startDate à partir des dates du groupe
+            String startDate = determineStartDate(targetGroup);
+
+            // 4. Construction du DTO de réponse
+            TrainingDetailsForInvitationDto trainingDetailsDto = TrainingDetailsForInvitationDto.builder()
+                    .id(training.getId())
+                    .theme(training.getTheme())
+                    .csfPlanifie(training.getCsfPlanifie())
+                    .startDate(startDate)
+                    .location(targetGroup.getLocation())
+                    .build();
+
+            log.info("Successfully retrieved training details for invitation - trainingId: {}, groupId: {}",
+                    trainingId, groupId);
+
+            return ResponseEntity.ok(trainingDetailsDto);
+
+        } catch (TrainingNotFoundException | TrainingGroupeNotFoundException e) {
+            log.error("Entity not found: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Unexpected error getting training details for invitation - trainingId: {}, groupId: {}: {}",
+                    trainingId, groupId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error retrieving training details: " + e.getMessage());
+        }
     }
 
     @Override
@@ -268,6 +308,14 @@ public class TrainingServiceImpl implements TrainingService {
                             .code("INTERNAL_ERROR")
                             .build());
         }
+    }
+
+    /**
+     * Détermine la date de début à partir de la liste des dates du groupe
+     * Retourne la première date chronologique ou null si aucune date n'est disponible
+     */
+    private String determineStartDate(TrainingGroupe group) {
+        return TrainingUtilMethods.getEarliestDate(group.getDates());
     }
 
     /**

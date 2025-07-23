@@ -4,6 +4,7 @@ import org.example.trainingservice.dto.group.GroupDto;
 import org.example.trainingservice.dto.need.*;
 import org.example.trainingservice.dto.plan.*;
 import org.example.trainingservice.entity.plan.Training;
+import org.example.trainingservice.entity.plan.TrainingGroupe;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -208,6 +209,37 @@ public class TrainingUtilMethods {
                 .id(training.getId())
                 .theme(training.getTheme())
                 .csfPlanifie(training.getCsfPlanifie())
+                .build();
+    }
+
+    /**
+     * Extrait la première date chronologique d'une liste de dates
+     * @param dates Liste des dates au format String
+     * @return La première date chronologique ou null si aucune date valide
+     */
+    public static String getEarliestDate(List<String> dates) {
+        if (dates == null || dates.isEmpty()) {
+            return null;
+        }
+
+        return dates.stream()
+                .filter(date -> date != null && !date.trim().isEmpty())
+                .sorted() // Tri lexicographique (fonctionne pour format ISO: YYYY-MM-DD)
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
+     * Convertit un Training et TrainingGroupe en TrainingDetailsForInvitationDto
+     */
+    public static TrainingDetailsForInvitationDto convertToTrainingDetailsForInvitationDto(
+            Training training, TrainingGroupe group) {
+        return TrainingDetailsForInvitationDto.builder()
+                .id(training.getId())
+                .theme(training.getTheme())
+                .csfPlanifie(training.getCsfPlanifie())
+                .startDate(getEarliestDate(group.getDates()))
+                .location(group.getLocation())
                 .build();
     }
 }

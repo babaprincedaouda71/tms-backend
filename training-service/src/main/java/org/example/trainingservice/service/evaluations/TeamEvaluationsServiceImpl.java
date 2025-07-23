@@ -1042,6 +1042,7 @@ public class TeamEvaluationsServiceImpl implements TeamEvaluationsService {
                             .theme(themeValue)
                             .questionnaire(questionnaire.getTitle())
                             .companyId(companyId)
+                            .numberOfGroup(1)
                             // Initialiser les autres champs requis de "Need"
                             .status(NeedStatusEnums.DRAFT)
                             .build();
