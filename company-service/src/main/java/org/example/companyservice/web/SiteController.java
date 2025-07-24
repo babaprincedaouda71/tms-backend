@@ -45,4 +45,16 @@ public class SiteController {
     public ResponseEntity<?> getSitesByIds(@RequestParam List<Long> ids) {
         return siteService.getSitesByIds(ids);
     }
+
+    // 🆕 Nouvelle méthode pour récupérer les sites avec leurs départements
+    @GetMapping("/get/all/with-departments")
+    public ResponseEntity<?> getAllWithDepartments() {
+        return siteService.getAllWithDepartments();
+    }
+
+    // 🆕 Nouvelle méthode pour récupérer les départements d'un site
+    @GetMapping("/get/{id}/departments")
+    public ResponseEntity<?> getSiteDepartments(@PathVariable Long id) {
+        return siteService.getSiteDepartments(id);
+    }
 }

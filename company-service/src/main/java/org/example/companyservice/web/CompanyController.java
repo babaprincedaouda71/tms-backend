@@ -66,4 +66,9 @@ public class CompanyController {
         companyService.getCurrentCompany();
         return companyService.getCurrentCompany();
     }
+
+    @GetMapping("/getName/{id}")
+    public ResponseEntity<?> getName(@PathVariable Long id) {
+        return companyService.getName(id);
+    }
 }

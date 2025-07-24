@@ -17,4 +17,9 @@ public interface SiteService {
     ResponseEntity<?> delete(Long id);
 
     ResponseEntity<?> getSitesByIds(List<Long> ids);
+
+    // 🆕 Nouvelles méthodes
+    ResponseEntity<?> getAllWithDepartments();
+
+    ResponseEntity<?> getSiteDepartments(Long siteId);
 }

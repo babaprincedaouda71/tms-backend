@@ -114,6 +114,17 @@ public class CompanyServiceImpl implements CompanyService {
         return ResponseEntity.ok(CompanyUtilMethods.mapToCurrentCompanyDto(byId.get()));
     }
 
+    @Override
+    public ResponseEntity<?> getName(Long id) {
+        Optional<Company> byId = companyRepository.findById(id);
+        if (byId.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        Company company = byId.get();
+        String name = company.getName();
+        return ResponseEntity.ok(name);
+    }
+
     /********************************************************/
 
     private void sendPasswordSetupEmail(Company company) {

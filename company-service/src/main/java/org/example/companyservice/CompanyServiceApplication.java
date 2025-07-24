@@ -10,6 +10,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.Bean;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
@@ -34,6 +35,7 @@ public class CompanyServiceApplication {
             QualificationRepository qualificationRepository
     ) {
         return args -> {
+            // Création des entreprises
             Company company01 = Company.builder()
                     .name("GALAXY SOLUTIONS")
                     .registrationCompleted(true)
@@ -51,6 +53,7 @@ public class CompanyServiceApplication {
                     .legalContactFirstName("Baba")
                     .legalContactLastName("Prince")
                     .build();
+
             Company company02 = Company.builder()
                     .name("ALTRAZ")
                     .registrationCompleted(true)
@@ -68,6 +71,7 @@ public class CompanyServiceApplication {
                     .legalContactFirstName("Thomas")
                     .legalContactLastName("Jude Junior")
                     .build();
+
             companyRepository.save(company01);
             companyRepository.save(company02);
 
@@ -97,21 +101,69 @@ public class CompanyServiceApplication {
             strategicAxesRepository.saveAll(strategicAxesList);
             System.out.println("5 axes stratégiques réalistes générés.");
 
-            // Génération de 5 Sites aléatoires
-            List<Site> siteList = IntStream.rangeClosed(0, 4)
-                    .mapToObj(i -> Site.builder()
+            // 🆕 PREMIÈRE ÉTAPE : Génération et sauvegarde des Départements
+            List<Department> departmentList = IntStream.rangeClosed(0, 4)
+                    .mapToObj(i -> Department.builder()
                             .companyId(companyId)
-                            .code(siteCodes.get(i))
-                            .label(siteLabels.get(i))
-                            .address(addresses.get(i))
-                            .city(cities.get(i))
-                            .phone("05" + String.format("%08d", random.nextInt(100000000)))
-                            .trainingRoom(TrainingRoomEnum.values()[random.nextInt(TrainingRoomEnum.values().length)])
-                            .size(30 + random.nextInt(120))
+                            .code(departmentCodes.get(i))
+                            .name(departmentNames.get(i))
                             .build())
                     .toList();
-            siteRepository.saveAll(siteList);
-            System.out.println("5 sites réalistes générés.");
+            List<Department> savedDepartments = departmentRepository.saveAll(departmentList);
+            System.out.println("5 départements réalistes générés et sauvegardés.");
+
+            // 🆕 DEUXIÈME ÉTAPE : Génération des Sites avec attribution aléatoire de départements
+            List<Site> siteList = IntStream.rangeClosed(0, 4)
+                    .mapToObj(i -> {
+                        // Attribution aléatoire de 1 à 3 départements par site
+                        int numberOfDepartments = random.nextInt(3) + 1; // Entre 1 et 3 départements
+                        List<Long> assignedDepartmentIds = new ArrayList<>();
+
+                        // Sélection aléatoire des départements (sans doublon)
+                        List<Department> availableDepartments = new ArrayList<>(savedDepartments);
+                        for (int j = 0; j < numberOfDepartments && !availableDepartments.isEmpty(); j++) {
+                            int randomIndex = random.nextInt(availableDepartments.size());
+                            Department selectedDept = availableDepartments.remove(randomIndex);
+                            assignedDepartmentIds.add(selectedDept.getId());
+                        }
+
+                        return Site.builder()
+                                .companyId(companyId)
+                                .code(siteCodes.get(i))
+                                .label(siteLabels.get(i))
+                                .address(addresses.get(i))
+                                .city(cities.get(i))
+                                .phone("05" + String.format("%08d", random.nextInt(100000000)))
+                                .trainingRoom(TrainingRoomEnum.values()[random.nextInt(TrainingRoomEnum.values().length)])
+                                .size(30 + random.nextInt(120))
+                                .departmentIds(assignedDepartmentIds) // 🆕 Attribution des départements
+                                .build();
+                    })
+                    .toList();
+
+            List<Site> savedSites = siteRepository.saveAll(siteList);
+            System.out.println("5 sites réalistes générés avec départements assignés.");
+
+            // 🆕 AFFICHAGE DES RELATIONS CRÉÉES
+            System.out.println("\n=== RELATIONS SITE-DÉPARTEMENT CRÉÉES ===");
+            for (Site site : savedSites) {
+                System.out.println("🏢 Site: " + site.getLabel() + " (" + site.getCode() + ")");
+                if (site.getDepartmentIds() != null && !site.getDepartmentIds().isEmpty()) {
+                    System.out.println("   📋 Départements assignés:");
+                    for (Long deptId : site.getDepartmentIds()) {
+                        Department dept = savedDepartments.stream()
+                                .filter(d -> d.getId().equals(deptId))
+                                .findFirst()
+                                .orElse(null);
+                        if (dept != null) {
+                            System.out.println("      - " + dept.getName() + " (" + dept.getCode() + ")");
+                        }
+                    }
+                } else {
+                    System.out.println("   📋 Aucun département assigné");
+                }
+                System.out.println();
+            }
 
             // Génération de 5 Domains aléatoires
             List<Domain> domainList = IntStream.rangeClosed(0, 4)
@@ -123,17 +175,6 @@ public class CompanyServiceApplication {
                     .toList();
             domainRepository.saveAll(domainList);
             System.out.println("5 domaines réalistes générés.");
-
-            // Génération de 5 Departments aléatoires
-            List<Department> departmentList = IntStream.rangeClosed(0, 4)
-                    .mapToObj(i -> Department.builder()
-                            .companyId(companyId)
-                            .code(departmentCodes.get(i))
-                            .name(departmentNames.get(i))
-                            .build())
-                    .toList();
-            departmentRepository.saveAll(departmentList);
-            System.out.println("5 départements réalistes générés.");
 
             // Génération de 5 Qualifications aléatoires
             List<Qualification> qualificationList = IntStream.rangeClosed(0, 4)
@@ -149,7 +190,16 @@ public class CompanyServiceApplication {
                     .toList();
             qualificationRepository.saveAll(qualificationList);
             System.out.println("5 qualifications réalistes générées.");
+
+            // 🆕 RÉSUMÉ FINAL
+            System.out.println("\n=== RÉSUMÉ DE LA GÉNÉRATION ===");
+            System.out.println("✅ 2 entreprises créées");
+            System.out.println("✅ 5 axes stratégiques créés");
+            System.out.println("✅ 5 départements créés");
+            System.out.println("✅ 5 sites créés avec départements assignés");
+            System.out.println("✅ 5 domaines créés");
+            System.out.println("✅ 5 qualifications créées");
+            System.out.println("🔗 Relations Site-Département établies automatiquement");
         };
     }
-
 }

@@ -19,4 +19,6 @@ public interface CompanyService {
     ResponseEntity<?> getAllWaiting();
 
     ResponseEntity<?> getCurrentCompany();
+
+    ResponseEntity<?> getName(Long id);
 }
