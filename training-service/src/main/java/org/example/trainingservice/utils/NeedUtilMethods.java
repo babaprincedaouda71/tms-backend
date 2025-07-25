@@ -65,14 +65,16 @@ public class NeedUtilMethods {
                 .build();
     }
 
-    public static GetStrategicAxeNeedDto convertToGetStrategicAxeNeedDto(Need need) {
-        GetStrategicAxeNeedDto dto = new GetStrategicAxeNeedDto();
+    public static GetNeedToEditDto convertToGetNeedToEditDto(Need need) {
+        GetNeedToEditDto dto = new GetNeedToEditDto();
         dto.setId(need.getId());
 
-        StrategicAxeDto strategicAxeDto = new StrategicAxeDto();
-        strategicAxeDto.setId(need.getStrategicAxeId());
-        strategicAxeDto.setTitle(need.getStrategicAxeName());
-        dto.setAxe(strategicAxeDto);
+        if (need.getSource().equals(NeedSource.Strategic_Axes) && need.getStrategicAxeId() != null) {
+            StrategicAxeDto strategicAxeDto = new StrategicAxeDto();
+            strategicAxeDto.setId(need.getStrategicAxeId());
+            strategicAxeDto.setTitle(need.getStrategicAxeName());
+            dto.setAxe(strategicAxeDto);
+        }
 
         if (need.getSiteIds() != null && !need.getSiteIds().isEmpty() && need.getSiteNames() != null && !need.getSiteNames().isEmpty() && need.getSiteIds().size() == need.getSiteNames().size()) {
             List<SiteDto> siteDtos = need.getSiteIds().stream()
@@ -121,6 +123,7 @@ public class NeedUtilMethods {
         dto.setObjective(need.getObjective());
         dto.setContent(need.getContent());
         dto.setCsf(need.getCsf());
+        dto.setSource(need.getSource());
         dto.setCsfPlanifie(need.getCsfPlanifie());
 
         return dto;
@@ -188,7 +191,7 @@ public class NeedUtilMethods {
         return dto;
     }
 
-    public static void updateNeedFromAddStrategicAxeNeedDto(Need needToUpdate, AddStrategicAxeNeedDto updateDto) {
+    public static void updateNeedFromEditNeedDto(Need needToUpdate, EditNeedDto updateDto) {
         if (updateDto.getAxe() != null) {
             needToUpdate.setStrategicAxeId(updateDto.getAxe().getId());
             needToUpdate.setStrategicAxeName(updateDto.getAxe().getTitle());
@@ -243,7 +246,7 @@ public class NeedUtilMethods {
                 .creationDate(need.getCreationDate())
                 .requester(need.getRequesterName())
                 .approver(approverName)
-                .status(need.getStatus() != null ? need.getStatus().toString() : null)
+                .status(need.getStatus() != null ? need.getStatus().getDescription() : null)
                 .build();
     }
 

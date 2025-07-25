@@ -1,6 +1,7 @@
 package org.example.trainingservice.web.needs;
 
 import org.example.trainingservice.dto.need.AddStrategicAxeNeedDto;
+import org.example.trainingservice.dto.need.EditNeedDto;
 import org.example.trainingservice.dto.need.UpdateStatusRequestDto;
 import org.example.trainingservice.service.needs.NeedService;
 import org.springframework.http.ResponseEntity;
@@ -46,7 +47,7 @@ public class NeedController {
         return needService.getAllStrategicAxesNeed();
     }
 
-    @GetMapping("/get/strategicAxesNeed/{id}")
+    @GetMapping("/get/needToEdit/{id}")
     public ResponseEntity<?> getById(@PathVariable Long id) {
         return needService.getNeedById(id);
     }
@@ -61,9 +62,9 @@ public class NeedController {
         return needService.getDetailsById(id);
     }
 
-    @PutMapping("/edit/strategicAxesNeed/{id}")
-    public ResponseEntity<?> edit(@PathVariable Long id, @RequestBody AddStrategicAxeNeedDto addStrategicAxeNeedDto) {
-        return needService.editStrategicAxe(id, addStrategicAxeNeedDto);
+    @PutMapping("/edit/need/{id}")
+    public ResponseEntity<?> edit(@PathVariable Long id, @RequestBody EditNeedDto editNeedDto) {
+        return needService.editNeed(id, editNeedDto);
     }
 
     /*

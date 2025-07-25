@@ -1,6 +1,7 @@
 package org.example.trainingservice.service.needs;
 
 import org.example.trainingservice.dto.need.AddStrategicAxeNeedDto;
+import org.example.trainingservice.dto.need.EditNeedDto;
 import org.example.trainingservice.dto.need.UpdateStatusRequestDto;
 import org.springframework.http.ResponseEntity;
 
@@ -23,7 +24,7 @@ public interface NeedService {
 
     ResponseEntity<?> getDetailsById(Long id);
 
-    ResponseEntity<?> editStrategicAxe(Long id, AddStrategicAxeNeedDto addStrategicAxeNeedDto);
+    ResponseEntity<?> editNeed(Long id, EditNeedDto editNeedDto);
 
     ResponseEntity<?> getAllIndividualRequestNeeds();
 

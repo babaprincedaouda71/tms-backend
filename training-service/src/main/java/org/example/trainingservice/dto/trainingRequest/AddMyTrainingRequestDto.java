@@ -4,6 +4,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.example.trainingservice.dto.need.DepartmentDto;
+import org.example.trainingservice.dto.need.DomainDto;
+import org.example.trainingservice.dto.need.SiteDto;
 
 import java.time.LocalDate;
 
@@ -14,13 +17,13 @@ import java.time.LocalDate;
 public class AddMyTrainingRequestDto {
     private Integer year;
 
-    private String domain;
+    private DomainDto domain;
 
     private String theme;
 
-    private String site;
+    private SiteDto site;
 
-    private String department;
+    private DepartmentDto department;
 
     private LocalDate wishDate;
 

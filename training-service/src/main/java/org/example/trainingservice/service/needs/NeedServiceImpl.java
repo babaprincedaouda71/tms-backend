@@ -192,14 +192,14 @@ public class NeedServiceImpl implements NeedService {
 
     @Override
     public ResponseEntity<?> getNeedById(Long id) {
-        log.info("Fetching strategic axes need by ID: {}", id);
+        log.info("Fetching  need by ID: {}", id);
         Need need = needRepository.findByIdAndCompanyId(id, SecurityUtils.getCurrentCompanyId())
                 .orElseThrow(() -> new NeedNotFoundException("Besoin non trouvé avec l'ID : " + id, null));
 
-        GetStrategicAxeNeedDto getStrategicAxeNeedDto = NeedUtilMethods.convertToGetStrategicAxeNeedDto(need);
+        GetNeedToEditDto getNeedToEditDto = NeedUtilMethods.convertToGetNeedToEditDto(need);
 
-        log.info("Successfully fetched strategic axes need with ID: {}", id);
-        return new ResponseEntity<>(getStrategicAxeNeedDto, HttpStatus.OK);
+        log.info("Successfully fetched need with ID: {}", id);
+        return new ResponseEntity<>(getNeedToEditDto, HttpStatus.OK);
     }
 
     @Override
@@ -228,8 +228,8 @@ public class NeedServiceImpl implements NeedService {
 
     @Override
     @Transactional
-    public ResponseEntity<?> editStrategicAxe(Long id, AddStrategicAxeNeedDto addStrategicAxeNeedDto) {
-        log.info("Editing strategic axes need with ID: {} and data: {}", id, addStrategicAxeNeedDto);
+    public ResponseEntity<?> editNeed(Long id, EditNeedDto editNeedDto) {
+        log.info("Editing need with ID: {} and data: {}", id, editNeedDto);
 
         Long companyId = SecurityUtils.getCurrentCompanyId();
 
@@ -238,7 +238,7 @@ public class NeedServiceImpl implements NeedService {
 
         // Récupérer le nombre de groupes associés au besoin existant
         int existingGroupCount = existingNeed.getGroupes() != null ? existingNeed.getGroupes().size() : 0;
-        int requestedGroupCount = addStrategicAxeNeedDto.getNbrGroup();
+        int requestedGroupCount = editNeedDto.getNbrGroup();
 
         // Créer de nouveaux groupes si le nombre demandé est supérieur au nombre actuel
         if (requestedGroupCount > existingGroupCount) {
@@ -261,11 +261,11 @@ public class NeedServiceImpl implements NeedService {
             }
         }
 
-        NeedUtilMethods.updateNeedFromAddStrategicAxeNeedDto(existingNeed, addStrategicAxeNeedDto);
+        NeedUtilMethods.updateNeedFromEditNeedDto(existingNeed, editNeedDto);
 
         Need updatedNeed = needRepository.save(existingNeed);
 
-        log.info("Successfully updated strategic axes need with ID: {}", updatedNeed.getId());
+        log.info("Successfully updated need with ID: {}", updatedNeed.getId());
         return new ResponseEntity<>(updatedNeed, HttpStatus.OK);
     }
 

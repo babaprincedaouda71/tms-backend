@@ -23,17 +23,23 @@ public class TrainingRequest {
     @Column(name = "annee")
     private Integer year;
 
+    private Long domainId;
+
     @Column(name = "domaine")
-    private String domain;
+    private String domainName;
 
     @Column(name = "theme")
     private String theme;
 
+    private Long siteId;
+
     @Column(name = "site")
-    private String site;
+    private String siteName;
+
+    private Long departmentId;
 
     @Column(name = "departement")
-    private String department;
+    private String departmentName;
 
     @Column(name = "date_soumission")
     private LocalDate creationDate;
