@@ -259,7 +259,7 @@ public class NeedUtilMethods {
                 .theme(need.getTheme())
                 .manager(approverName)
                 .creationDate(need.getCreationDate())
-                .status(need.getStatus() != null ? need.getStatus().toString() : null)
+                .status(need.getStatus() != null ? need.getStatus().getDescription() : null)
                 .build();
     }
 
