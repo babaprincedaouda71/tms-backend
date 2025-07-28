@@ -245,7 +245,7 @@ public class MyEvaluationsServiceImpl implements MyEvaluationsService {
         return groupeEvaluationDtos;
     }
 
-    // MÉTHODE UTILITAIRE pour traiter un questionnaire pour un utilisateur
+    // MÉTHODE UTILITAIRE pour traiter un questionnaire pour un utilisateur (VERSION AVANCÉE)
     private MyEvaluationsDto processQuestionnaireForUser(Long userId, Questionnaire questionnaire, EvaluationSource source) {
         // Récupérer les réponses selon la source
         List<UserResponse> userResponses = userResponseRepository
@@ -259,15 +259,19 @@ public class MyEvaluationsServiceImpl implements MyEvaluationsService {
 
         String status = "En attente";
         LocalDate startDate = null;
+        Boolean isEvaluationSent = false;
+
         if (progression > 0 && progression < 100) {
             status = "En cours";
             if (!userResponses.isEmpty()) {
                 startDate = userResponses.get(0).getStartDate();
+                isEvaluationSent = determineIfEvaluationIsSent(userResponses.get(0), userId);
             }
         } else if (progression == 100) {
             status = "Terminée";
             if (!userResponses.isEmpty()) {
                 startDate = userResponses.get(0).getStartDate();
+                isEvaluationSent = determineIfEvaluationIsSent(userResponses.get(0), userId);
             }
         }
 
@@ -285,7 +289,36 @@ public class MyEvaluationsServiceImpl implements MyEvaluationsService {
                 .status(status)
                 .questions(questionDtos)
                 .startDate(startDate != null ? startDate.toString() : "Pas encore")
+                .description(questionnaire.getDescription())
+                .isSentToManager(isEvaluationSent) // Utiliser le statut calculé
                 .build();
+    }
+
+    // NOUVELLE MÉTHODE pour déterminer si l'évaluation a été envoyée selon le rôle
+    private Boolean determineIfEvaluationIsSent(UserResponse userResponse, Long userId) {
+        try {
+            // Récupérer le rôle de l'utilisateur
+            UserDto userDto = authServiceClient.getUserById(userId);
+            if (userDto == null) {
+                log.warn("Utilisateur non trouvé avec l'ID: {}. Impossible de déterminer le statut d'envoi.", userId);
+                return false;
+            }
+
+            String userRole = userDto.getRole();
+
+            // Retourner le bon statut selon le rôle
+            if ("Collaborateur".equals(userRole)) {
+                return userResponse.getIsSentToManager() != null ? userResponse.getIsSentToManager() : false;
+            } else if ("Manager".equals(userRole)) {
+                return userResponse.getIsSentToAdmin() != null ? userResponse.getIsSentToAdmin() : false;
+            } else {
+                log.warn("Rôle utilisateur '{}' non géré pour l'utilisateur {}.", userRole, userId);
+                return false;
+            }
+        } catch (Exception e) {
+            log.error("Erreur lors de la récupération du rôle pour l'utilisateur {}: {}", userId, e.getMessage());
+            return false;
+        }
     }
 
     // MÉTHODE UTILITAIRE pour calculer les réponses valides (logique existante extraite)
