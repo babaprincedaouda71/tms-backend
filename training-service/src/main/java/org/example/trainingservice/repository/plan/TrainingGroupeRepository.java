@@ -21,9 +21,22 @@ public interface TrainingGroupeRepository extends JpaRepository<TrainingGroupe, 
             "WHERE tg.company_id = :companyId " +
             "AND tg.user_group_ids IS NOT NULL " +
             "AND :userId = ANY(tg.user_group_ids) " +
+            "AND tg.status IN ('PLANNED', 'IN_PROGRESS') " +
             "ORDER BY tg.id DESC",
             nativeQuery = true)
     List<TrainingGroupe> findByCompanyIdAndUserGroupIdsContainingNative(
+            @Param("companyId") Long companyId,
+            @Param("userId") Long userId
+    );
+
+    @Query(value = "SELECT tg.* FROM training_groupe tg " +
+            "WHERE tg.company_id = :companyId " +
+            "AND tg.user_group_ids IS NOT NULL " +
+            "AND :userId = ANY(tg.user_group_ids) " +
+            "AND tg.status IN ('COMPLETED', 'CANCELLED') " +
+            "ORDER BY tg.id DESC",
+            nativeQuery = true)
+    List<TrainingGroupe> findTrainingGroupeCompleted(
             @Param("companyId") Long companyId,
             @Param("userId") Long userId
     );

@@ -683,7 +683,7 @@ public class TrainingGroupeServiceImpl implements TrainingGroupeService {
 
             // Utilisation directe de la requête native PostgreSQL
             List<TrainingGroupe> userGroups = trainingGroupeRepository
-                    .findByCompanyIdAndUserGroupIdsContainingNative(companyId, userId);
+                    .findTrainingGroupeCompleted(companyId, userId);
 
             // Vérification si l'utilisateur a des formations dans l'historique
             if (userGroups.isEmpty()) {

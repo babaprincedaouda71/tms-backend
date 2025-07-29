@@ -9,6 +9,7 @@ import org.example.trainingservice.entity.TrainerForTrainingGroupe;
 import org.example.trainingservice.entity.plan.Plan;
 import org.example.trainingservice.entity.plan.Training;
 import org.example.trainingservice.entity.plan.TrainingGroupe;
+import org.example.trainingservice.enums.GroupeStatusEnums;
 import org.example.trainingservice.enums.NeedStatusEnums;
 import org.example.trainingservice.enums.PlanStatusEnum;
 import org.example.trainingservice.enums.TrainingStatusEnum;
@@ -366,7 +367,11 @@ public class PlanServiceImpl implements PlanService {
                 .workerCount(groupe.getWorkerCount())
                 .temporaryWorkerCount(groupe.getTemporaryWorkerCount())
                 .comment(groupe.getComment())
-                .status(groupe.getStatus())
+                .status(
+                        "APPROVED".equals(groupe.getStatus().name())
+                                ? GroupeStatusEnums.PLANNED
+                                : groupe.getStatus()
+                )
                 .trainer(savedTrainer)  // Utiliser le trainer sauvegardé
                 .isAllFieldsFilled(groupe.getIsAllFieldsFilled())
                 .build();

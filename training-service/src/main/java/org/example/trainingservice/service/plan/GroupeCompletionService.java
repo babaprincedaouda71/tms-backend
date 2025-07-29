@@ -94,7 +94,7 @@ public class GroupeCompletionService {
         boolean isComplete = isGroupeComplete(groupe);
         groupe.setIsAllFieldsFilled(isComplete);
         if (isComplete) {
-            groupe.setStatus(GroupeStatusEnums.PLANNED);
+            groupe.setStatus(GroupeStatusEnums.APPROVED);
         }
         return groupe;
     }
