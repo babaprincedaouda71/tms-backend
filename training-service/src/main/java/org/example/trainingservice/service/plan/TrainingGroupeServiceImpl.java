@@ -669,7 +669,92 @@ public class TrainingGroupeServiceImpl implements TrainingGroupeService {
 
     @Override
     public ResponseEntity<?> getUserTrainingHistory(Long userId) {
-        return null;
+        log.info("Getting user training history for userId: {}", userId);
+
+        try {
+            // Validation de l'entrée
+            if (userId == null) {
+                log.warn("Invalid request: userId is null");
+                return ResponseEntity.badRequest()
+                        .body("L'ID de l'utilisateur est requis");
+            }
+
+            Long companyId = SecurityUtils.getCurrentCompanyId();
+
+            // Utilisation directe de la requête native PostgreSQL
+            List<TrainingGroupe> userGroups = trainingGroupeRepository
+                    .findByCompanyIdAndUserGroupIdsContainingNative(companyId, userId);
+
+            // Vérification si l'utilisateur a des formations dans l'historique
+            if (userGroups.isEmpty()) {
+                log.info("No training history found for userId: {} in company: {}", userId, companyId);
+                return ResponseEntity.ok(Collections.emptyList());
+            }
+
+            // Chargement explicite des relations Training et Plan pour éviter les LazyInitializationException
+            List<UserTrainingHistoryDto> userTrainingHistoryList = userGroups.stream()
+                    .map(group -> {
+                        // Assurer le chargement de la relation training si elle n'est pas déjà chargée
+                        if (group.getTraining() == null) {
+                            // Recharger le groupe avec la relation training
+                            Optional<Training> training = trainingRepository.findById(group.getTraining().getId());
+                            if (training.isPresent()) {
+                                group.setTraining(training.get());
+                            } else {
+                                log.warn("Training not found for group: {}", group.getId());
+                                return null;
+                            }
+                        }
+                        return convertToUserTrainingHistoryDto(group);
+                    })
+                    .filter(Objects::nonNull) // Filtrer les conversions qui ont échoué
+                    .collect(Collectors.toList());
+
+            log.info("Successfully retrieved {} training history entries for userId: {}",
+                    userTrainingHistoryList.size(), userId);
+
+            return ResponseEntity.ok(userTrainingHistoryList);
+
+        } catch (Exception e) {
+            log.error("Error retrieving user training history for userId: {}: {}", userId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Erreur lors de la récupération de l'historique de formation utilisateur");
+        }
+    }
+
+    /**
+     * Convertit un TrainingGroupe en UserTrainingHistoryDto
+     * Similaire à convertToUserPlanningDto mais avec l'ajout du year depuis Plan
+     */
+    private UserTrainingHistoryDto convertToUserTrainingHistoryDto(TrainingGroupe trainingGroupe) {
+        try {
+            Training training = trainingGroupe.getTraining();
+            if (training == null) {
+                log.warn("TrainingGroupe {} has no associated training", trainingGroupe.getId());
+                return null;
+            }
+
+            Plan plan = training.getPlan();
+            if (plan == null) {
+                log.warn("Training {} has no associated plan", training.getId());
+                return null;
+            }
+
+            String theme = training.getTheme();
+            String formattedDates = formatDates(trainingGroupe.getDates());
+            Integer year = plan.getYear();
+
+            return UserTrainingHistoryDto.builder()
+                    .year(year)
+                    .theme(theme)
+                    .dates(formattedDates)
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Error converting TrainingGroupe {} to UserTrainingHistoryDto: {}",
+                    trainingGroupe.getId(), e.getMessage());
+            return null;
+        }
     }
 
     /**

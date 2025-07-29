@@ -1,6 +1,7 @@
 package org.example.trainingservice.repository.plan;
 
 import org.example.trainingservice.entity.plan.TrainingGroupe;
+import org.example.trainingservice.enums.GroupeStatusEnums;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -26,4 +27,10 @@ public interface TrainingGroupeRepository extends JpaRepository<TrainingGroupe, 
             @Param("companyId") Long companyId,
             @Param("userId") Long userId
     );
+
+    /**
+     * Trouve tous les groupes avec les statuts spécifiés
+     * Utilisé pour la mise à jour automatique (exclut DRAFT)
+     */
+    List<TrainingGroupe> findByStatusIn(List<GroupeStatusEnums> statuses);
 }

@@ -82,7 +82,7 @@ public class GroupeCompletionService {
         boolean isComplete = isTrainingGroupeComplete(trainingGroupe);
         trainingGroupe.setIsAllFieldsFilled(isComplete);
         if (isComplete) {
-            trainingGroupe.setStatus(GroupeStatusEnums.APPROVED);
+            trainingGroupe.setStatus(GroupeStatusEnums.PLANNED);
         }
         return trainingGroupe;
     }
@@ -94,7 +94,7 @@ public class GroupeCompletionService {
         boolean isComplete = isGroupeComplete(groupe);
         groupe.setIsAllFieldsFilled(isComplete);
         if (isComplete) {
-            groupe.setStatus(GroupeStatusEnums.APPROVED);
+            groupe.setStatus(GroupeStatusEnums.PLANNED);
         }
         return groupe;
     }
