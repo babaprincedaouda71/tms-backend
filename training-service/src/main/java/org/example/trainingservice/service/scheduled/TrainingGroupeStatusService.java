@@ -30,7 +30,7 @@ public class TrainingGroupeStatusService {
         log.info("Début de la mise à jour automatique des statuts des groupes de formation");
 
         List<TrainingGroupe> groupesToUpdate = trainingGroupeRepository
-                .findByStatusIn(List.of(GroupeStatusEnums.APPROVED, GroupeStatusEnums.IN_PROGRESS));
+                .findByStatusIn(List.of(GroupeStatusEnums.PLANNED, GroupeStatusEnums.IN_PROGRESS));
 
         int updatedCount = 0;
         LocalDate today = LocalDate.now();
@@ -77,7 +77,7 @@ public class TrainingGroupeStatusService {
      */
     private GroupeStatusEnums calculateStatusFromDates(List<String> dates, LocalDate today) {
         if (dates == null || dates.isEmpty()) {
-            return GroupeStatusEnums.APPROVED; // Statut par défaut si pas de dates
+            return GroupeStatusEnums.PLANNED; // Statut par défaut si pas de dates
         }
 
         try {
@@ -95,12 +95,12 @@ public class TrainingGroupeStatusService {
             } else if (minDate.isEqual(today) || (minDate.isBefore(today) && maxDate.isAfter(today))) {
                 return GroupeStatusEnums.IN_PROGRESS;
             } else {
-                return GroupeStatusEnums.APPROVED; // Futur
+                return GroupeStatusEnums.PLANNED; // Futur
             }
 
         } catch (Exception e) {
             log.error("Erreur lors du parsing des dates pour le groupe. Dates: {}", dates, e);
-            return GroupeStatusEnums.APPROVED; // Fallback en cas d'erreur
+            return GroupeStatusEnums.PLANNED; // Fallback en cas d'erreur
         }
     }
 
