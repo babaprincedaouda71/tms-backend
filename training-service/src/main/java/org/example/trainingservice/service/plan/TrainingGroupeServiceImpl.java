@@ -7,10 +7,7 @@ import org.example.trainingservice.dto.group.*;
 import org.example.trainingservice.dto.need.DepartmentDto;
 import org.example.trainingservice.dto.need.SiteDto;
 import org.example.trainingservice.dto.ocf.OCFAddOrEditGroupDto;
-import org.example.trainingservice.dto.plan.GroupToSendInvitationDto;
-import org.example.trainingservice.dto.plan.ParticipantForCancel;
-import org.example.trainingservice.dto.plan.ParticipantForPresenceList;
-import org.example.trainingservice.dto.plan.SendInvitationDto;
+import org.example.trainingservice.dto.plan.*;
 import org.example.trainingservice.entity.OCF;
 import org.example.trainingservice.entity.TrainerForTrainingGroupe;
 import org.example.trainingservice.entity.plan.Plan;
@@ -30,9 +27,13 @@ import org.example.trainingservice.repository.plan.TrainingRepository;
 import org.example.trainingservice.service.completion.CompletionUtilMethods;
 import org.example.trainingservice.utils.SecurityUtils;
 import org.example.trainingservice.utils.TrainingGroupeUtilMethods;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -609,6 +610,139 @@ public class TrainingGroupeServiceImpl implements TrainingGroupeService {
 
         List<String> dates = trainingGroupe.getDates();
         return ResponseEntity.ok(dates);
+    }
+
+    @Override
+    public ResponseEntity<?> getUserPlanning(Long userId) {
+        log.info("Getting user planning for userId: {}", userId);
+
+        try {
+            // Validation de l'entrée
+            if (userId == null) {
+                log.warn("Invalid request: userId is null");
+                return ResponseEntity.badRequest()
+                        .body("L'ID de l'utilisateur est requis");
+            }
+
+            Long companyId = SecurityUtils.getCurrentCompanyId();
+
+            // Utilisation directe de la requête native PostgreSQL
+            List<TrainingGroupe> userGroups = trainingGroupeRepository
+                    .findByCompanyIdAndUserGroupIdsContainingNative(companyId, userId);
+
+            // Vérification si l'utilisateur a des formations planifiées
+            if (userGroups.isEmpty()) {
+                log.info("No training groups found for userId: {} in company: {}", userId, companyId);
+                return ResponseEntity.ok(Collections.emptyList());
+            }
+
+            // Chargement explicite des relations Training pour éviter les LazyInitializationException
+            List<UserPlanningDto> userPlanningList = userGroups.stream()
+                    .map(group -> {
+                        // Assurer le chargement de la relation training si elle n'est pas déjà chargée
+                        if (group.getTraining() == null) {
+                            // Recharger le groupe avec la relation training
+                            Optional<Training> training = trainingRepository.findById(group.getTraining().getId());
+                            if (training.isPresent()) {
+                                group.setTraining(training.get());
+                            } else {
+                                log.warn("Training not found for group: {}", group.getId());
+                                return null;
+                            }
+                        }
+                        return convertToUserPlanningDto(group);
+                    })
+                    .filter(Objects::nonNull) // Filtrer les conversions qui ont échoué
+                    .collect(Collectors.toList());
+
+            log.info("Successfully retrieved {} training planning entries for userId: {}",
+                    userPlanningList.size(), userId);
+
+            return ResponseEntity.ok(userPlanningList);
+
+        } catch (Exception e) {
+            log.error("Error retrieving user planning for userId: {}: {}", userId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Erreur lors de la récupération du planning utilisateur");
+        }
+    }
+
+    @Override
+    public ResponseEntity<?> getUserTrainingHistory(Long userId) {
+        return null;
+    }
+
+    /**
+     * Convertit un TrainingGroupe en UserPlanningDto
+     * Gère la concaténation des dates multiples
+     */
+    private UserPlanningDto convertToUserPlanningDto(TrainingGroupe trainingGroupe) {
+        try {
+            Training training = trainingGroupe.getTraining();
+            if (training == null) {
+                log.warn("TrainingGroupe {} has no associated training", trainingGroupe.getId());
+                return null;
+            }
+
+            String theme = training.getTheme();
+            String formattedDates = formatDates(trainingGroupe.getDates());
+
+            return UserPlanningDto.builder()
+                    .theme(theme)
+                    .dates(formattedDates)
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Error converting TrainingGroupe {} to UserPlanningDto: {}",
+                    trainingGroupe.getId(), e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Formate la liste des dates en une chaîne lisible
+     * Ex: ["2025-01-15", "2025-01-16"] -> "15/01/2025, 16/01/2025"
+     */
+    private String formatDates(List<String> dates) {
+        if (dates == null || dates.isEmpty()) {
+            return "Dates non définies";
+        }
+
+        // Si une seule date
+        if (dates.size() == 1) {
+            return formatSingleDate(dates.get(0));
+        }
+
+        // Pour plusieurs dates, les joindre avec des virgules
+        return dates.stream()
+                .filter(Objects::nonNull)
+                .map(this::formatSingleDate)
+                .collect(Collectors.joining(", "));
+    }
+
+    /**
+     * Formate une date individuelle du format ISO vers un format lisible
+     * Ex: "2025-01-15" -> "15/01/2025"
+     */
+    private String formatSingleDate(String isoDate) {
+        if (StringUtils.isBlank(isoDate)) {
+            return "Date invalide";
+        }
+
+        try {
+            // Tentative de parsing et reformatage si c'est une date ISO
+            if (isoDate.matches("\\d{4}-\\d{2}-\\d{2}")) {
+                LocalDate date = LocalDate.parse(isoDate);
+                return date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+            }
+
+            // Si ce n'est pas une date ISO, retourner tel quel
+            return isoDate;
+
+        } catch (DateTimeParseException e) {
+            log.warn("Unable to parse date: {}, returning as-is", isoDate);
+            return isoDate;
+        }
     }
 
     /**

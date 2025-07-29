@@ -40,4 +40,8 @@ public interface TrainingGroupeService {
     ResponseEntity<?> getGroupDetailsForSendInvitationToTrainer(Long groupId);
 
     ResponseEntity<?> getGroupDates(Long groupId);
+
+    ResponseEntity<?> getUserPlanning(Long userId);
+
+    ResponseEntity<?> getUserTrainingHistory(Long userId);
 }

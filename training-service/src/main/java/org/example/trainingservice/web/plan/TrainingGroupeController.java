@@ -91,4 +91,14 @@ public class TrainingGroupeController {
     public ResponseEntity<?> getGroupDates(@PathVariable Long groupId) {
         return trainingGroupeService.getGroupDates(groupId);
     }
+
+    @GetMapping("/get/planning/{userId}")
+    public ResponseEntity<?> getUserPlanning(@PathVariable Long userId) {
+        return trainingGroupeService.getUserPlanning(userId);
+    }
+
+    @GetMapping("/get/trainingHistory/{userId}")
+    public ResponseEntity<?> getUserTrainingHistory(@PathVariable Long userId) {
+        return trainingGroupeService.getUserTrainingHistory(userId);
+    }
 }
