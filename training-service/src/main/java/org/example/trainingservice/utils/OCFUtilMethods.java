@@ -1,8 +1,11 @@
 package org.example.trainingservice.utils;
 
 import org.example.trainingservice.dto.ocf.OCFAddOrEditGroupDto;
+import org.example.trainingservice.dto.ocf.OCFCreateDto;
 import org.example.trainingservice.dto.ocf.OCFDashboardDataDto;
 import org.example.trainingservice.entity.OCF;
+import org.example.trainingservice.enums.OCFStatusEnum;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -37,7 +40,37 @@ public class OCFUtilMethods {
             dto.setPositionLegalRepresentant(ocf.getPositionLegalRepresentant());
             dto.setEmailLegalRepresentant(ocf.getEmailLegalRepresentant());
             dto.setPhoneLegalRepresentant(ocf.getPhoneLegalRepresentant());
+            dto.setStatus(ocf.getStatus().getDescription());
             return dto;
         }).collect(Collectors.toList());
+    }
+
+    public static OCF mapToOCF(@NotNull OCFCreateDto ocfCreateDto, Long companyId) {
+        return OCF.builder()
+                .companyId(companyId)
+                .corporateName(ocfCreateDto.getCorporateName())
+                .address(ocfCreateDto.getAddress())
+                .phone(ocfCreateDto.getPhone())
+                .email(ocfCreateDto.getEmail())
+                .website(ocfCreateDto.getWebsite())
+                .staff(ocfCreateDto.getStaff())
+                .creationDate(ocfCreateDto.getCreationDate())
+                .legalForm(ocfCreateDto.getLegalForm())
+                .ice(ocfCreateDto.getIce())
+                .rc(ocfCreateDto.getRc())
+                .patent(ocfCreateDto.getPatent())
+                .ifValue(ocfCreateDto.getIfValue())
+                .cnss(ocfCreateDto.getCnss())
+                .permanentStaff(ocfCreateDto.getPermanentStaff())
+                .nameLegalRepresentant(ocfCreateDto.getNameLegalRepresentant())
+                .positionLegalRepresentant(ocfCreateDto.getPositionLegalRepresentant())
+                .phoneLegalRepresentant(ocfCreateDto.getPhoneLegalRepresentant())
+                .emailLegalRepresentant(ocfCreateDto.getEmailLegalRepresentant())
+                .nameMainContact(ocfCreateDto.getNameMainContact())
+                .positionMainContact(ocfCreateDto.getPositionMainContact())
+                .phoneMainContact(ocfCreateDto.getPhoneMainContact())
+                .emailMainContact(ocfCreateDto.getEmailMainContact())
+                .status(OCFStatusEnum.ACTIVE)
+                .build();
     }
 }

@@ -11,56 +11,35 @@ import java.time.LocalDate;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class OCFDashboardDataDto {
+public class OCFResponseDto {
     private Long id;
-
     private Long companyId;
-
     private String code;
-
     private String corporateName;
-
-    private String ice;
-
-    private String phone;
-
-    private String email;
-
     private String address;
-
+    private String phone;
+    private String email;
     private String website;
-
-    private String nameMainContact;
-
-    private String positionMainContact;
-
-    private String phoneMainContact;
-
-    private String emailMainContact;
-
-    private String nameLegalRepresentant;
-
-    private String positionLegalRepresentant;
-
-    private String phoneLegalRepresentant;
-
-    private String emailLegalRepresentant;
-
     private String staff;
-
     private LocalDate creationDate;
-
     private String legalForm;
-
+    private String ice;
     private String rc;
-
     private String patent;
-
     private String ifValue;
-
     private String cnss;
-
     private Integer permanentStaff;
 
-    private String status;
+    // Représentant légal
+    private String nameLegalRepresentant;
+    private String positionLegalRepresentant;
+    private String phoneLegalRepresentant;
+    private String emailLegalRepresentant;
+
+    // Contact principal
+    private String nameMainContact;
+    private String positionMainContact;
+    private String phoneMainContact;
+    private String emailMainContact;
+
 }

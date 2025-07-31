@@ -4,6 +4,7 @@ import org.example.trainingservice.entity.OCF;
 import org.example.trainingservice.entity.campaign.Question;
 import org.example.trainingservice.entity.campaign.Questionnaire;
 import org.example.trainingservice.entity.plan.Plan;
+import org.example.trainingservice.enums.OCFStatusEnum;
 import org.example.trainingservice.enums.PlanStatusEnum;
 import org.example.trainingservice.repository.OCFRepository;
 import org.example.trainingservice.repository.evaluation.QuestionRepository;
@@ -42,6 +43,7 @@ public class TrainingServiceApplication {
                     .corporateName("GALAXY SOLUTIONS")
                     .emailMainContact("babaprince71@gmail.com")
                     .companyId(1L)
+                    .status(OCFStatusEnum.ACTIVE)
                     .build();
             ocfRepository.save(ocf);
 
