@@ -1,13 +1,10 @@
 package org.example.trainingservice.utils;
 
 import lombok.extern.slf4j.Slf4j;
-import org.example.trainingservice.entity.plan.GroupeInvoice;
-import org.example.trainingservice.service.plan.FileStorageService;
 import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 public class FileUtilMethods {
-    private static FileStorageService fileStorageService;
 
     /**
      * Validation des fichiers PDF

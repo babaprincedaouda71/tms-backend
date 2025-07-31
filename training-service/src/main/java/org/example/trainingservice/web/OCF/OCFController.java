@@ -27,17 +27,18 @@ public class OCFController {
         return ocfService.getOcfAddOrEditGroup();
     }
 
-    @PostMapping(path="/add/ocf", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})
+    @PostMapping(path = "/add/ocf", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})
     public ResponseEntity<?> createOcf(
             @RequestPart OCFCreateDto ocfCreateDto,
-            @RequestPart(required = false)MultipartFile legalStatusFile,
-            @RequestPart(required = false)MultipartFile eligibilityCertificateFile,
-            @RequestPart(required = false)MultipartFile jrcTemplateFile,
-            @RequestPart(required = false)MultipartFile insurancePolicyFile,
-            @RequestPart(required = false)MultipartFile taxComplianceCertificateFile,
-            @RequestPart(required = false)MultipartFile bankStatementCertificateFile,
-            @RequestPart(required = false)MultipartFile termsAndConditionsFile
-            ) {
+            @RequestPart(required = false) MultipartFile legalStatusFile,
+            @RequestPart(required = false) MultipartFile eligibilityCertificateFile,
+            @RequestPart(required = false) MultipartFile jrcTemplateFile,
+            @RequestPart(required = false) MultipartFile insurancePolicyFile,
+            @RequestPart(required = false) MultipartFile taxComplianceCertificateFile,
+            @RequestPart(required = false) MultipartFile bankStatementCertificateFile,
+            @RequestPart(required = false) MultipartFile termsAndConditionsFile,
+            @RequestPart(required = false) MultipartFile otherCertificationsFile
+    ) {
         // Validation des fichiers pdf
         FileUtilMethods.validatePdfFiles(
                 legalStatusFile,
@@ -46,7 +47,8 @@ public class OCFController {
                 insurancePolicyFile,
                 taxComplianceCertificateFile,
                 bankStatementCertificateFile,
-                termsAndConditionsFile
+                termsAndConditionsFile,
+                otherCertificationsFile
         );
         return ocfService.createOCF(
                 ocfCreateDto,
@@ -56,12 +58,18 @@ public class OCFController {
                 insurancePolicyFile,
                 taxComplianceCertificateFile,
                 bankStatementCertificateFile,
-                termsAndConditionsFile
+                termsAndConditionsFile,
+                otherCertificationsFile
         );
     }
 
     @PutMapping("/update-status/{id}")
     public ResponseEntity<?> updateStatus(@PathVariable Long id) {
         return ocfService.updateStatus(id);
+    }
+
+    @GetMapping("/get/details/ocf/{id}")
+    public ResponseEntity<?> getDetails(@PathVariable Long id) {
+        return ocfService.getDetails(id);
     }
 }

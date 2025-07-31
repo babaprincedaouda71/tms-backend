@@ -3,6 +3,7 @@ package org.example.trainingservice.utils;
 import org.example.trainingservice.dto.ocf.OCFAddOrEditGroupDto;
 import org.example.trainingservice.dto.ocf.OCFCreateDto;
 import org.example.trainingservice.dto.ocf.OCFDashboardDataDto;
+import org.example.trainingservice.dto.ocf.OCFResponseDto;
 import org.example.trainingservice.entity.OCF;
 import org.example.trainingservice.enums.OCFStatusEnum;
 import org.jetbrains.annotations.NotNull;
@@ -71,6 +72,35 @@ public class OCFUtilMethods {
                 .phoneMainContact(ocfCreateDto.getPhoneMainContact())
                 .emailMainContact(ocfCreateDto.getEmailMainContact())
                 .status(OCFStatusEnum.ACTIVE)
+                .build();
+    }
+
+    public static OCFResponseDto mapToOCFDetailsDto(OCF ocf) {
+        return OCFResponseDto.builder()
+                .id(ocf.getId())
+                .companyId(ocf.getCompanyId())
+                .corporateName(ocf.getCorporateName())
+                .address(ocf.getAddress())
+                .phone(ocf.getPhone())
+                .email(ocf.getEmail())
+                .website(ocf.getWebsite())
+                .staff(ocf.getStaff())
+                .creationDate(ocf.getCreationDate())
+                .legalForm(ocf.getLegalForm())
+                .ice(ocf.getIce())
+                .rc(ocf.getRc())
+                .patent(ocf.getPatent())
+                .ifValue(ocf.getIfValue())
+                .cnss(ocf.getCnss())
+                .permanentStaff(ocf.getPermanentStaff())
+                .nameLegalRepresentant(ocf.getNameLegalRepresentant())
+                .positionLegalRepresentant(ocf.getPositionLegalRepresentant())
+                .phoneLegalRepresentant(ocf.getPhoneLegalRepresentant())
+                .emailLegalRepresentant(ocf.getEmailLegalRepresentant())
+                .nameMainContact(ocf.getNameMainContact())
+                .positionMainContact(ocf.getPositionMainContact())
+                .phoneMainContact(ocf.getPhoneMainContact())
+                .emailMainContact(ocf.getEmailMainContact())
                 .build();
     }
 }
