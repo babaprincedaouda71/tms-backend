@@ -42,4 +42,13 @@ public class OCFResponseDto {
     private String phoneMainContact;
     private String emailMainContact;
 
+    // Noms des fichiers pour la gestion des documents existants
+    private String legalStatusFile;
+    private String eligibilityCertificateFile;
+    private String jrcTemplateFile;
+    private String insurancePolicyFile;
+    private String taxComplianceCertificateFile;
+    private String bankStatementCertificateFile;
+    private String termsAndConditionsFile;
+    private String otherCertificationsFile;
 }
