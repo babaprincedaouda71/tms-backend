@@ -30,13 +30,4 @@ public class Groupe {
     @OneToMany(mappedBy = "groupe", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JsonBackReference
     private Set<User> users;
-
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "groupe_accessRight",
-            joinColumns = @JoinColumn(name = "groupe_id"),
-            inverseJoinColumns = @JoinColumn(name = "accessRight_id")
-    )
-    private Set<AccessRight> accessRights = new HashSet<>();
-
 }

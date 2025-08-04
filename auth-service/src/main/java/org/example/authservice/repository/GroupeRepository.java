@@ -32,7 +32,6 @@ public interface GroupeRepository extends JpaRepository<Groupe, Long> {
 
     // solution pour récuperer également les droits d'accès
     @Query("SELECT g FROM Groupe g " +
-            "LEFT JOIN FETCH g.accessRights " +
             "WHERE g.companyId = :companyId")
     List<Groupe> findAllWithAccessRightsByCompanyId(Long companyId);
 

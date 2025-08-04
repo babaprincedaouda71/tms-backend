@@ -2,7 +2,6 @@ package org.example.authservice;
 
 import org.example.authservice.entity.Groupe;
 import org.example.authservice.entity.User;
-import org.example.authservice.repository.AccessRightRepository;
 import org.example.authservice.repository.GroupeRepository;
 import org.example.authservice.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
@@ -26,96 +25,41 @@ public class AuthServiceApplication {
     CommandLineRunner commandLineRunner(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
-            GroupeRepository groupeRepository,
-            AccessRightRepository accessRightRepository) {
+            GroupeRepository groupeRepository
+            ) {
         return args -> {
-            // create access_right
-//            AccessRight accessRight01 = AccessRight.builder()
-//                    .page("Utilisateurs")
-//                    .action("Consulter_Utilisateurs")
-//                    .allowed(true)
-//                    .build();
-//            AccessRight accessRight02 = AccessRight.builder()
-//                    .page("Utilisateurs")
-//                    .action("Modifier_Utilisateurs")
-//                    .allowed(true)
-//                    .build();
-//            AccessRight accessRight03 = AccessRight.builder()
-//                    .page("Utilisateurs")
-//                    .action("Supprimer_Utilisateurs")
-//                    .allowed(true)
-//                    .build();
-//            AccessRight accessRight04 = AccessRight.builder()
-//                    .page("Formations")
-//                    .action("Consulter_Formations")
-//                    .allowed(true)
-//                    .build();
-//            AccessRight accessRight05 = AccessRight.builder()
-//                    .page("Formations")
-//                    .action("Modifier_Formations")
-//                    .allowed(true)
-//                    .build();
-//            AccessRight accessRight06 = AccessRight.builder()
-//                    .page("Formations")
-//                    .action("Supprimer_Formations")
-//                    .allowed(true)
-//                    .build();
-//            AccessRight accessRight07 = AccessRight.builder()
-//                    .page("Plan")
-//                    .action("Consulter_Plan")
-//                    .allowed(true)
-//                    .build();
-//            AccessRight accessRight08 = AccessRight.builder()
-//                    .page("Plan")
-//                    .action("Supprimer_Plan")
-//                    .allowed(true)
-//                    .build();
-//            accessRightRepository.save(accessRight01);
-//            accessRightRepository.save(accessRight02);
-//            accessRightRepository.save(accessRight03);
-//            accessRightRepository.save(accessRight04);
-//            accessRightRepository.save(accessRight05);
-//            accessRightRepository.save(accessRight06);
-//            accessRightRepository.save(accessRight07);
-//            accessRightRepository.save(accessRight08);
 
             // create roles
             Groupe groupe01 = Groupe.builder()
                     .companyId(1L)
                     .name("Formateur")
                     .description("Formateur")
-//                    .accessRights(Set.of(accessRight04, accessRight07))
                     .build();
             Groupe groupe02 = Groupe.builder()
                     .companyId(1L)
                     .name("Admin")
                     .description("Admin")
-//                    .accessRights(Set.of(accessRight01, accessRight02, accessRight03))
                     .build();
             Groupe groupe03 = Groupe.builder()
                     .companyId(1L)
                     .name("Collaborateur")
                     .description("Collaborateur")
-//                    .accessRights(Set.of(accessRight04, accessRight07))
                     .build();
             Groupe groupe04 = Groupe.builder()
                     .companyId(1L)
                     .name("Manager")
                     .description("Manager")
-//                    .accessRights(Set.of(accessRight01, accessRight04, accessRight05, accessRight07))
                     .build();
             Groupe groupe05 = Groupe.builder()
                     .companyId(2L)
                     .name("Admin")
                     .description("Admin")
-//                    .accessRights(Set.of(accessRight01, accessRight04, accessRight05, accessRight07))
                     .build();
 
             Groupe groupe06 = Groupe.builder()
                     .companyId(1L)
                     .name("Employé")
                     .description("Employé")
-//                    .accessRights(Set.of(accessRight01, accessRight04, accessRight05, accessRight07))
                     .build();
             groupeRepository.save(groupe01);
             groupeRepository.save(groupe02);

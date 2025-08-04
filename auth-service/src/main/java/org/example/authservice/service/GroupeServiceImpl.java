@@ -95,20 +95,6 @@ public class GroupeServiceImpl implements GroupeService {
                     groupeMap.put("id", groupe.getId());
                     groupeMap.put("description", groupe.getDescription());
                     groupeMap.put("userCount", String.valueOf(userCountByGroupId.getOrDefault(groupe.getId(), 0L)));
-
-                    // Mapper les accessRights dans le format attendu par le frontend
-                    List<Map<String, Object>> accessRightsMap = groupe.getAccessRights().stream()
-                            .map(ar -> {
-                                Map<String, Object> rightMap = new HashMap<>();
-                                rightMap.put("page", ar.getPage());
-                                rightMap.put("action", ar.getAction());
-                                rightMap.put("allowed", ar.isAllowed());
-                                return rightMap;
-                            })
-                            .collect(Collectors.toList());
-
-                    groupeMap.put("accessRights", accessRightsMap.isEmpty() ? null : accessRightsMap);
-
                     return groupeMap;
                 })
                 .collect(Collectors.toList());
